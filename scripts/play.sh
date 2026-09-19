@@ -7,6 +7,9 @@
 # video frame wait on the audio timeline: about 1.5 s of delay in practice.
 # mpv's --audio-file with the ALSA device is silent (timestamp bases differ).
 #
+# Volume: 9/0, / and *, mouse wheel, m to mute (mpv-game-volume.lua adjusts the
+#         PipeWire stream, because the audio does not pass through mpv).
+#
 # Usage: scripts/play.sh [extra mpv options]
 #        AUDIO_LATENCY_MS=20 scripts/play.sh     (loopback latency, default 20)
 set -uo pipefail
@@ -58,6 +61,7 @@ fi
 
 mpv "av://v4l2:$node" --demuxer-lavf-o=input_format=yuyv422 \
     --profile=low-latency --untimed --no-audio \
+    --script="$here/mpv-game-volume.lua" \
     --title="Elgato 4K60 Pro Mk.2" --log-file="$log" "$@"
 
 if grep -q 'Cannot allocate memory' "$log"; then

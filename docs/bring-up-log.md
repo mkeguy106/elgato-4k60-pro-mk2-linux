@@ -186,3 +186,9 @@ stream. No PipeWire source for the card appeared in `pactl list short sources`.
   default), finds devices by PCI address, re-creates the PipeWire source if it
   is missing, explains the contiguous-memory failure. Audible result and
   audio/video sync still to be confirmed by the user.
+- User result with `scripts/play.sh`: sound present and in sync, playable
+  (finished a Mario Kart 8 race in third place). mpv's own volume keys had no
+  effect because the audio bypasses mpv; `scripts/mpv-game-volume.lua` now
+  rebinds 9/0, / and *, the mouse wheel and m to adjust the PipeWire stream
+  `output.elgato-capture-audio` with an on-screen level. Tested through mpv's
+  IPC against the live stream: 100% -> 105% -> 95% -> muted -> 100%.
