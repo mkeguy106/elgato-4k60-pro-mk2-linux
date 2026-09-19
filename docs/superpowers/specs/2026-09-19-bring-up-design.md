@@ -4,6 +4,22 @@ Date: 2026-09-19
 Status: design approved, awaiting spec review
 Sub-project: 1 of 4
 
+## Scope change (2026-09-19, after Task 4)
+
+The primary source turned out to be a first-generation Nintendo Switch (docked:
+at most 1920x1080 at 60 Hz, SDR). Decided by the user on that basis:
+
+- HDR is no longer a goal. Sub-project 2 (10-bit spike) and sub-project 4
+  (10-bit in the driver) are dropped. The project is now bring-up, then the
+  player. Statements below that call 10-bit a hard requirement are superseded.
+- Bring-up is verified at the mode the connected source outputs: 1920x1080 at
+  60 Hz for the Switch. Wherever this document says 3840x2160 at 60 Hz, read
+  that instead. 4K60 remains a capability the driver claims and this project
+  has not verified; it can be checked later with a 4K source without changing
+  the design.
+- The player (sub-project 3) targets SDR low-latency play-through with audio.
+  It must not assume a fixed resolution.
+
 ## Project context
 
 Goal of the whole project: the Elgato 4K60 Pro Mk.2 PCIe capture card working on
