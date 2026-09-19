@@ -46,3 +46,54 @@ the fork; `lib/sc0710-version.h` was not modified).
   dies of SIGPIPE, pipefail makes the pipeline fail). `unload.sh` and the
   planned `verify.sh` now read `/proc/modules` instead.
 - Module left unloaded at the end of this task.
+
+## Automated verification, module loaded by hand (2026-09-19, Switch at 1080p60)
+
+Final run of `scripts/verify.sh` (expected size 1920x1080):
+
+    module         PASS  sc0710 is loaded
+    devices        PASS  pci=0000:03:00.0 video=/dev/video2 alsa=hw:5,0
+    signal         FAIL  1920x1080 119.88 (want 1920x1080 at 60)
+    format-YUYV    PASS  1920x1080 listed
+    format-BGR3    PASS  1920x1080 listed
+    capture        PASS  1800 frames in 30s
+    kernel-log     PASS  no sc0710 errors during capture
+    audio          FAIL  mean volume -91.0 dB
+    picture        LOOK
+    audio-default  PASS  default sink and source unchanged
+
+Captured frame: the Switch's "Ready to start system update" dialog, sharp,
+correctly aligned, correct colours. The dialog is silent, so the audio result
+says nothing about the audio path yet; to be re-run with sound playing.
+
+### Problem 1: capture cannot start on a fragmented system (root cause found)
+
+First runs with a live signal delivered 0 frames: `VIDIOC_STREAMON` returned
+ENOMEM and the kernel logged `page allocation failure: order:10,
+mode:0xcc4(GFP_KERNEL|GFP_DMA32)` from `sc0710_dma_chain_alloc`.
+
+- The driver sets a 32-bit DMA mask and calls `dma_alloc_coherent` once per
+  chain, 4 chains per channel, at stream start. A 1080p YUYV frame (4147200
+  bytes) needs an order-10 (4 MB) physically contiguous block below 4 GB, so at
+  least four of them. At 3840x2160 each chain would need about 16 MB, beyond
+  what the page allocator can give at all.
+- After 4 days of uptime the DMA32 zone had 530 MB free but zero 4 MB blocks.
+- `echo 1 > /proc/sys/vm/compact_memory` alone yielded one block (not enough).
+  `sync; echo 3 > /proc/sys/vm/drop_caches` followed by compaction yielded 151,
+  and capture then worked.
+- With no signal the driver serves its placeholder without starting DMA, which
+  is why the no-signal run "worked" at about 4 fps.
+- Durable fixes available on this kernel (`CONFIG_CMA=y`, `CONFIG_DMA_CMA=y`,
+  `CONFIG_CMA_SIZE_MBYTES=0`): reserve a pool with `cma=256M` on the kernel
+  command line (reboot needed), or enable VT-d in the BIOS plus `intel_iommu=on`
+  so DMA buffers need not be physically contiguous (no DMAR lines in the boot
+  log, so VT-d is currently off). Not yet decided.
+
+### Problem 2: driver reports double the real frame rate
+
+The driver reports 1920x1080 at 119.88 fps (pixel clock 296.7 MHz) for a
+first-generation Switch, which outputs 60 Hz; on the first load it guessed p30
+(`No FPS Hint`). Delivery is a true 60 fps (1800 frames in 30 s of capture
+timestamps), so this is a labelling error, but players and OBS will be told
+119.88. Related upstream knobs: `hdmi_rate_decode`, `procedural_timings`.
+Not yet investigated.
