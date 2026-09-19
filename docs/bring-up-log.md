@@ -303,3 +303,24 @@ read a root-capable tool's script or man page instead of probing it with
 - Problem 2 seen again on this load: `No FPS Hint -> Pick 1920x1080p30`, and
   mpv labels the stream 30 fps. With `--untimed` this does not affect
   `play.sh`; frames are shown as they arrive.
+
+## Interactive verification on the installed module (2026-09-19, after the reboot)
+
+### 30-minute soak at 1080p60 (18:07:58-18:37:58)
+
+- `ffmpeg -f v4l2 -input_format yuyv422 -i /dev/video2 -map 0:v -t 1800 -f null -`
+  counted **107998 frames in 1800 s** (59.999 fps; `frames_ok`: rate OK),
+  speed 1x throughout.
+- `scripts/play.sh` (mpv + PipeWire loopback) streamed from the card for the
+  whole period, so this was also 30 minutes of two simultaneous video clients.
+- Kernel log: no sc0710 lines at all during the soak (0 matching
+  error/fail/timeout/tear/short/resync/overrun). `CmaFree` identical before
+  and after (235164 kB): the second client shares the driver's DMA buffers
+  and nothing leaked.
+- ffmpeg printed 53323 `non monotonically increasing dts` warnings. Cause is
+  Problem 2: this module load labelled the signal p30, so ffmpeg used a 1/30
+  time base while frames arrived at 60 per second and every second frame
+  collided with its predecessor's timestamp. No frames were dropped; a
+  recorder that trusts the advertised rate would be affected, `play.sh`
+  (`--untimed`) is not.
+- Tears, frame shifts or audio dropouts seen by the user: (to be filled in)
