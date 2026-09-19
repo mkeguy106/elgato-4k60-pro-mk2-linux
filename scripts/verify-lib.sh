@@ -103,3 +103,9 @@ audio_defaults() {
             "$(wpctl inspect "@DEFAULT_AUDIO_${t}@" | grep -oP 'node\.name = "\K[^"]+' | head -n 1)"
     done
 }
+
+# Print the name PipeWire derives from PCI address $1, e.g. pci-0000_03_00.0.
+# The card is alsa_card.<name>; its capture source is alsa_input.<name>.<profile>.
+pipewire_name_for() {
+    echo "pci-${1//:/_}"
+}

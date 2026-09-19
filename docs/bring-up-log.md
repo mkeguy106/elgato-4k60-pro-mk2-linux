@@ -166,3 +166,23 @@ stream. No PipeWire source for the card appeared in `pactl list short sources`.
   Still to be judged by the user: sync accuracy, stutter (about 250 MB/s
   through the pipe; `--stream-buffer-size=4MiB` on the mpv side if needed),
   and input delay. This is the basis for the player.
+
+### Player: split design replaces the combined stream (2026-09-19)
+
+- The combined ffmpeg-to-mpv stream had sound but about 1.5 s of delay (user:
+  "from the time I hit the gas to the car moving"), with or without
+  `--untimed` and small queues. Likely cause, not verified: ffmpeg rebases each
+  input to its own start, the audio device opens about a second after the
+  video, and the muxer outputs in timestamp order, so every video frame waits
+  for audio that does not exist yet.
+- Video-only `mpv av://v4l2:<node> --profile=low-latency --untimed` is
+  responsive (user: "so much better").
+- PipeWire offers the card as `alsa_input.pci-0000_03_00.0.stereo-fallback`
+  once no other program holds the ALSA device. The profile showed as active
+  without a source node until it was toggled off and on. A 10 s `pw-record`
+  from that source measured mean -24.7 dB, max -7.8 dB, no driver complaints,
+  default sink/source unchanged.
+- `scripts/play.sh` = mpv video (unbuffered) + `pw-loopback` audio (20 ms
+  default), finds devices by PCI address, re-creates the PipeWire source if it
+  is missing, explains the contiguous-memory failure. Audible result and
+  audio/video sync still to be confirmed by the user.
