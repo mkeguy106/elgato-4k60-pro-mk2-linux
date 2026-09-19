@@ -245,3 +245,30 @@ stream. No PipeWire source for the card appeared in `pactl list short sources`.
   controller had been idle for several minutes); not confirmed.
 - Problem 1 decision (user, 2026-09-19): reserve contiguous memory with
   `cma=256M` on the kernel command line. Not applied yet.
+
+### Problem 1 fix: the pool has to be placed below 4 GB
+
+Plain `cma=256M` would not help on this machine. Kernel 6.18 `mm/cma.c` places
+the pool bottom-up starting at 4 GB whenever the limit allows it ("Avoid using
+first 4GB to not interfere with constrained zones like DMA/DMA32"), x86 passes
+all of RAM as the limit, and this PC has 32 GB. The driver sets a 32-bit DMA
+mask, so a pool above 4 GB is rejected and `dma_alloc_coherent` falls back to
+the fragmented DMA32 zone as before. The parameter to use is `cma=256M@0-4G`.
+Established from the v6.18 source; to be confirmed after a reboot with
+`grep -i cma /proc/meminfo` and the `cma: Reserved` line in the kernel log.
+
+The command line lives in `/etc/kernel/cmdline`; `limine-update` regenerates
+the boot entries and both initramfs images from it.
+
+### Mistake: `limine-update --help` runs the update
+
+While looking up how to regenerate the boot entries, `limine-update --help` was
+run as a normal user, expecting usage text. The script ignores its arguments
+and re-executes itself through sudo, so it ran as root for about 3 s
+(17:59:43-17:59:46) and was killed by the closed output pipe while building the
+LTS initramfs in its temp directory. Checked afterwards: all 10 `path#hash`
+entries in `/boot/limine.conf` match the files on disk, both initramfs images
+still carry the 17:57 timestamp of the package install, the Limine EFI binary
+is unchanged, no temp directory was left behind. Nothing to repair. Lesson:
+read a root-capable tool's script or man page instead of probing it with
+`--help`.
