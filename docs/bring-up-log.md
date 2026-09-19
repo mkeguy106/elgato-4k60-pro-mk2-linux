@@ -272,3 +272,18 @@ still carry the 17:57 timestamp of the package install, the Limine EFI binary
 is unchanged, no temp directory was left behind. Nothing to repair. Lesson:
 read a root-capable tool's script or man page instead of probing it with
 `--help`.
+
+### Problem 1 fix applied, reboot pending (2026-09-19)
+
+- Appended `cma=256M@0-4G` to `/etc/kernel/cmdline` (backup:
+  `/etc/kernel/cmdline.bak-2026-09-19`), then ran `sudo limine-update` to
+  completion (exit 0).
+- `/boot/limine.conf`: both live entries (6.18 LTS and 7.2) carry the new
+  parameter; the snapshot entries keep the previous command line, so booting a
+  snapshot entry is a way back, as is editing the entry in the Limine menu.
+  All 10 `path#hash` entries verify against the files on disk.
+- Not yet in effect: `CmaTotal` is still 0 until the next reboot. To check
+  after rebooting: `grep -i cma /proc/meminfo` (expect `CmaTotal: 262144 kB`)
+  and `journalctl -k -b | grep 'cma: Reserved'` (expect a base address below
+  `0x100000000`). After a reboot the module has to be loaded by hand
+  (`sudo modprobe sc0710`) because of the boot guard.
