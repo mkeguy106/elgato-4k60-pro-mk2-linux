@@ -97,3 +97,49 @@ first-generation Switch, which outputs 60 Hz; on the first load it guessed p30
 timestamps), so this is a labelling error, but players and OBS will be told
 119.88. Related upstream knobs: `hdmi_rate_decode`, `procedural_timings`.
 Not yet investigated.
+
+## Automated verification, second pass (2026-09-19, Switch on the Mario Kart 8 title screen)
+
+Run while the user's mpv was also streaming video from the card (multi-client).
+
+    module         PASS  sc0710 is loaded
+    devices        PASS  pci=0000:03:00.0 video=/dev/video2 alsa=hw:5,0
+    signal         PASS  1920x1080 60.00
+    format-YUYV    PASS  1920x1080 listed
+    format-BGR3    PASS  1920x1080 listed
+    capture        PASS  1800 frames in 30s
+    kernel-log     PASS  no sc0710 errors during capture
+    audio          PASS  mean volume -30.3 dB
+    picture        LOOK  inspect out/frame-1080.png: correct image, aligned, right colours
+    audio-default  PASS  default sink and source unchanged
+    
+    all automated checks passed
+
+Findings since the first pass:
+
+- **Audio path works.** A direct 10 s ALSA capture measured mean -31.0 dB, max
+  -12.8 dB (48 kHz stereo). The earlier -91 dB was the Switch's silent
+  system-update dialog.
+- **Signal loss and recovery works.** The Switch restarted for a system update
+  while mpv was streaming; the driver logged `Signal restoration - DMA was
+  running, have streaming clients` and `DMA restarted after signal
+  restoration`, and the picture came back in the same mpv window.
+- **Frame rate is detected correctly after a re-lock.** After the Switch
+  restarted the driver logged `1920x1080p60`. The wrong values (p30, then
+  119.88) came from the first detections after module load. Problem 2 above is
+  therefore intermittent, not constant.
+- **mpv live view renders on the desktop** (confirmed by the user) with
+  `mpv av://v4l2:/dev/video2 --demuxer-lavf-o=input_format=yuyv422
+  --profile=low-latency --untimed --audio-file=av://alsa:hw:5,0`.
+
+### Problem 3: mpv loses audio across a signal loss
+
+After the Switch restarted, mpv kept showing video but the card's ALSA capture
+device was closed (`/proc/asound/card5/pcm0c/sub0/status`: closed; `fuser`
+showed mpv holding only `/dev/video2`). mpv does not reopen an external
+`--audio-file` input after it errors. A fresh mpv decodes real audio (mean
+-30.6 dB via `--ao=pcm`), but in that headless test only 1.4 s of audio was
+written for 8 s of video, so `--untimed` with a separately opened audio input
+may also starve audio. To be settled in the player design: candidates are
+playing audio outside mpv through a PipeWire loopback, or feeding mpv one muxed
+stream. No PipeWire source for the card appeared in `pactl list short sources`.
