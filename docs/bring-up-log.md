@@ -287,3 +287,19 @@ read a root-capable tool's script or man page instead of probing it with
   and `journalctl -k -b | grep 'cma: Reserved'` (expect a base address below
   `0x100000000`). After a reboot the module has to be loaded by hand
   (`sudo modprobe sc0710`) because of the boot guard.
+
+### Problem 1 fix confirmed after reboot (2026-09-19, 18:04 boot)
+
+- `cma: Reserved 256 MiB at 0x0000000044600000` (about 1.1 GB, below 4 GB);
+  `CmaTotal: 262144 kB`.
+- `CmaFree` was 250444 kB with the module loaded and idle, 235164 kB with
+  `scripts/play.sh` streaming: about 15 MB less, matching the driver's four
+  ~4 MB DMA chains. The capture buffers come from the reserved pool, so
+  STREAMON no longer depends on finding free 4 MB blocks in a fragmented
+  DMA32 zone. (At 2 minutes of uptime fragmentation would not have shown
+  either way; the CmaFree drop is the evidence.)
+- Boot guard worked: module absent after boot, loaded with
+  `sudo modprobe sc0710` from the DKMS path.
+- Problem 2 seen again on this load: `No FPS Hint -> Pick 1920x1080p30`, and
+  mpv labels the stream 30 fps. With `--untimed` this does not affect
+  `play.sh`; frames are shown as they arrive.
