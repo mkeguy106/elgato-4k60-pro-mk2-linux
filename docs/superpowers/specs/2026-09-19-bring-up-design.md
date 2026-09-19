@@ -21,11 +21,14 @@ at most 1920x1080 at 60 Hz, SDR). Decided by the user on that basis:
   It must not assume a fixed resolution.
 - Player direction chosen by the user (2026-09-19): mpv, not a custom
   application — a launcher script that finds the card by PCI address, an mpv
-  profile, and a desktop entry. Verified headless against the live card:
-  `mpv av://v4l2:<node> --demuxer-lavf-o=input_format=yuyv422
-  --profile=low-latency --untimed --audio-file=av://alsa:hw:<card>,0` opens
-  1920x1080 video and 48 kHz stereo audio. The launcher also has to cope with
-  the contiguous-memory failure recorded in `docs/bring-up-log.md`.
+  profile, and a desktop entry. The user wants audio fed through mpv in one
+  combined stream so it stays in sync. Working pipeline, confirmed by the user
+  with picture and sound: `ffmpeg -fflags nobuffer -f v4l2 -input_format
+  yuyv422 -i <node> -f alsa -ac 2 -ar 48000 -i hw:<card>,0 -map 0:v -map 1:a
+  -c:v rawvideo -c:a pcm_s16le -f nut - | mpv - --profile=low-latency
+  --cache=no`. Attaching audio with mpv's `--audio-file=av://alsa:...` does
+  NOT work (silent; see Problem 3 in `docs/bring-up-log.md`). The launcher also
+  has to cope with the contiguous-memory failure recorded there.
 
 ## Project context
 

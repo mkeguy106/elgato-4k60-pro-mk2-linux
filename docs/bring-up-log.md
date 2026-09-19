@@ -143,3 +143,26 @@ written for 8 s of video, so `--untimed` with a separately opened audio input
 may also starve audio. To be settled in the player design: candidates are
 playing audio outside mpv through a PipeWire loopback, or feeding mpv one muxed
 stream. No PipeWire source for the card appeared in `pactl list short sources`.
+
+### Problem 3, resolved: use one combined stream into mpv
+
+- A fresh mpv with `--audio-file=av://alsa:hw:5,0` was also silent. While it
+  ran, the card's capture PCM was held by mpv in state `XRUN`: mpv had opened
+  the device but was not reading it. Likely cause, not confirmed: the V4L2
+  timestamps are boot-relative (about 365000 s) and the ALSA timestamps are
+  wall-clock (about 1.79e9 s), and mpv does not rebase an external track
+  separately, so the audio looks decades ahead of the video.
+- Working, confirmed by the user with picture and sound (Mario Kart 8 title
+  music): let ffmpeg read both devices, rebase them to a common zero, and pipe
+  one uncompressed NUT stream into mpv:
+
+      ffmpeg -hide_banner -loglevel error -fflags nobuffer -thread_queue_size 1024 \
+        -f v4l2 -input_format yuyv422 -i /dev/video2 \
+        -thread_queue_size 1024 -f alsa -ac 2 -ar 48000 -i hw:5,0 \
+        -map 0:v -map 1:a -c:v rawvideo -c:a pcm_s16le -f nut - \
+        | mpv - --profile=low-latency --cache=no
+
+  `--untimed` is deliberately absent so mpv keeps audio and video in sync.
+  Still to be judged by the user: sync accuracy, stutter (about 250 MB/s
+  through the pipe; `--stream-buffer-size=4MiB` on the mpv side if needed),
+  and input delay. This is the basis for the player.
