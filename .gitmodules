@@ -1,0 +1,3 @@
+[submodule "driver"]
+	path = driver
+	url = https://github.com/mkeguy106/sc0710.git
