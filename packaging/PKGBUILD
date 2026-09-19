@@ -1,0 +1,52 @@
+# Maintainer: mkeguy106
+# Local package: DKMS tree built from ../driver at its checked-out commit.
+pkgname=sc0710-mk2-dkms
+_modname=sc0710
+pkgver=2026.09.02.1.r223.ea0a712
+pkgrel=1
+pkgdesc="DKMS driver for the Elgato 4K60 Pro Mk.2 capture card (mkeguy106/sc0710 fork)"
+arch=('x86_64')
+url="https://github.com/mkeguy106/elgato-4k60-pro-mk2-linux"
+license=('GPL-2.0-or-later')
+depends=('dkms')
+makedepends=('git')
+conflicts=('sc0710-dkms-git' 'sc0710-dkms' 'sc0710')
+install=${pkgname}.install
+source=('sc0710-blacklist.conf')
+sha256sums=('SKIP')
+
+_driver_dir="$(realpath "${startdir:-$PWD}/../driver")"
+_commit="$(git -C "${_driver_dir}" rev-parse HEAD)"
+
+pkgver() {
+    local _ver
+    _ver="$(git -C "${_driver_dir}" show "${_commit}:version" | head -n 1 | tr - . | tr -d '[:space:]')"
+    printf '%s.r%s.%s' "${_ver}" \
+        "$(git -C "${_driver_dir}" rev-list --count "${_commit}")" \
+        "$(git -C "${_driver_dir}" rev-parse --short=7 "${_commit}")"
+}
+
+prepare() {
+    rm -rf "${srcdir}/tree"
+    install -d "${srcdir}/tree"
+    git -C "${_driver_dir}" archive "${_commit}" \
+        Makefile dkms.conf version lib LICENSE scripts/sc0710-dkms-make.sh \
+        | tar -x -C "${srcdir}/tree"
+}
+
+package() {
+    local dest="${pkgdir}/usr/src/${_modname}-${pkgver}"
+
+    install -d "${dest}"
+    cp -r "${srcdir}/tree/Makefile" "${srcdir}/tree/dkms.conf" \
+          "${srcdir}/tree/version" "${srcdir}/tree/lib" "${dest}/"
+    sed -i "s/^PACKAGE_VERSION=.*/PACKAGE_VERSION=\"${pkgver}\"/" "${dest}/dkms.conf"
+
+    # dkms.conf's MAKE[0] calls this wrapper by absolute path.
+    install -Dm755 "${srcdir}/tree/scripts/sc0710-dkms-make.sh" \
+        "${pkgdir}/usr/lib/sc0710/sc0710-dkms-make.sh"
+    install -Dm644 "${srcdir}/tree/LICENSE" \
+        "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE"
+    install -Dm644 "${srcdir}/sc0710-blacklist.conf" \
+        "${pkgdir}/etc/modprobe.d/sc0710-blacklist.conf"
+}

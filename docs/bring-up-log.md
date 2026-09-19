@@ -192,3 +192,56 @@ stream. No PipeWire source for the card appeared in `pactl list short sources`.
   rebinds 9/0, / and *, the mouse wheel and m to adjust the PipeWire stream
   `output.elgato-capture-audio` with an on-screen level. Tested through mpv's
   IPC against the live stream: 100% -> 105% -> 95% -> muted -> 100%.
+- User confirmed the in-mpv volume keys work during play.
+
+## Packaged install (2026-09-19)
+
+- Package: `sc0710-mk2-dkms 2026.09.02.1.r223.ea0a712-1`, built with
+  `makepkg -fd` (`-d` because `dkms`, a runtime dependency, was not installed
+  yet at build time). Contents inspected before install: only
+  `/usr/src/sc0710-<ver>/`, `/usr/lib/sc0710/sc0710-dkms-make.sh`, the licence
+  and `/etc/modprobe.d/sc0710-blacklist.conf`; the install script only prints.
+- `dkms` 3.4.3-1 installed from the distro repos first.
+- `dkms status sc0710`:
+
+      sc0710/2026.09.02.1.r223.ea0a712, 6.18.50-3-cachyos-lts, x86_64: installed
+      sc0710/2026.09.02.1.r223.ea0a712, 7.2.5-1-cachyos, x86_64: installed
+
+  Both were installed by the stock `70-dkms-install.hook`; the fork's
+  `sc0710-dkms-ensure` hook was not needed.
+- Kernel headers Makefile checksums unchanged after DKMS builds: yes
+- snapper pre/post snapshot numbers: 5195 / 5196 (`dkms`), 5197 / 5198
+  (`sc0710-mk2-dkms`). Last snapshot before any change: 5194.
+- Side effect not foreseen in the plan: the transaction triggered CachyOS's
+  limine-mkinitcpio hook, which regenerated the initramfs for both kernels and
+  updated `/boot/limine.conf`. `lsinitcpio` on both images shows only
+  `etc/modprobe.d/sc0710-blacklist.conf`; the module itself is not in either
+  initramfs.
+- Boot guard present (`blacklist sc0710`): yes
+- Module file loaded by `modprobe`:
+  `/lib/modules/6.18.50-3-cachyos-lts/updates/dkms/sc0710.ko.zst`
+- First detection after this load was correct (`1920x1080p60`), unlike the
+  first hand load (Problem 2 stays intermittent). No kernel warnings or errors.
+- Default audio sink and source unchanged by the load; no WirePlumber priority
+  rule added.
+- 7.2.5-1-cachyos: compiled and installed by DKMS; NOT runtime-tested.
+- `scripts/verify.sh` against the installed module:
+
+      module         PASS  sc0710 is loaded
+      devices        PASS  pci=0000:03:00.0 video=/dev/video2 alsa=hw:5,0
+      signal         PASS  1920x1080 60.00
+      format-YUYV    PASS  1920x1080 listed
+      format-BGR3    PASS  1920x1080 listed
+      capture        PASS  1800 frames in 30s
+      kernel-log     PASS  no sc0710 errors during capture
+      audio          PASS  mean volume -34.6 dB
+      picture        LOOK  inspect out/frame-1080.png: correct image, aligned, right colours
+      audio-default  PASS  default sink and source unchanged
+
+      all automated checks passed
+
+  Captured frame: Mario Kart 8 results table, sharp, aligned, correct colours.
+  The whole frame is dim, most likely the Switch's idle screen dimming (the
+  controller had been idle for several minutes); not confirmed.
+- Problem 1 decision (user, 2026-09-19): reserve contiguous memory with
+  `cma=256M` on the kernel command line. Not applied yet.
