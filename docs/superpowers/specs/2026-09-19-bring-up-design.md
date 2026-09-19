@@ -19,6 +19,13 @@ at most 1920x1080 at 60 Hz, SDR). Decided by the user on that basis:
   the design.
 - The player (sub-project 3) targets SDR low-latency play-through with audio.
   It must not assume a fixed resolution.
+- Player direction chosen by the user (2026-09-19): mpv, not a custom
+  application — a launcher script that finds the card by PCI address, an mpv
+  profile, and a desktop entry. Verified headless against the live card:
+  `mpv av://v4l2:<node> --demuxer-lavf-o=input_format=yuyv422
+  --profile=low-latency --untimed --audio-file=av://alsa:hw:<card>,0` opens
+  1920x1080 video and 48 kHz stereo audio. The launcher also has to cope with
+  the contiguous-memory failure recorded in `docs/bring-up-log.md`.
 
 ## Project context
 
