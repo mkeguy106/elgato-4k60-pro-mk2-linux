@@ -49,10 +49,11 @@ timings_1080=$'\tActive width: 1920\n\tActive height: 1080\n\tPixelclock: 148500
 check "parse_dv_timings 4k60"     "3840x2160 60.00" "$(parse_dv_timings <<<"$timings_4k60")"
 check "parse_dv_timings 1080p"    "1920x1080 59.94" "$(parse_dv_timings <<<"$timings_1080")"
 check "parse_dv_timings garbage"  "1" "$(status parse_dv_timings <<<"no signal")"
-check "is_4k60 accepts 60.00"     "0" "$(status is_4k60 "3840x2160 60.00")"
-check "is_4k60 accepts 59.94"     "0" "$(status is_4k60 "3840x2160 59.94")"
-check "is_4k60 rejects 30 fps"    "1" "$(status is_4k60 "3840x2160 30.00")"
-check "is_4k60 rejects 1080p"     "1" "$(status is_4k60 "1920x1080 60.00")"
+check "mode_ok accepts 1080p 60.00"   "0" "$(status mode_ok "1920x1080 60.00" 1920x1080)"
+check "mode_ok accepts 1080p 59.94"   "0" "$(status mode_ok "1920x1080 59.94" 1920x1080)"
+check "mode_ok accepts 4k when asked" "0" "$(status mode_ok "3840x2160 60.00" 3840x2160)"
+check "mode_ok rejects 30 fps"        "1" "$(status mode_ok "1920x1080 30.00" 1920x1080)"
+check "mode_ok rejects wrong size"    "1" "$(status mode_ok "1920x1080 60.00" 3840x2160)"
 
 formats=$'ioctl: VIDIOC_ENUM_FMT\n\tType: Video Capture\n\n\t[0]: \'YUYV\' (YUYV 4:2:2)\n\t\tSize: Discrete 3840x2160\n\t\t\tInterval: Discrete 0.017s (60.000 fps)\n\t[1]: \'BGR3\' (24-bit BGR 8-8-8)\n\t\tSize: Discrete 3840x2160'
 check "format_has_size YUYV 4k"        "0" "$(status format_has_size YUYV 3840x2160 <<<"$formats")"

@@ -58,10 +58,11 @@ parse_dv_timings() {
     echo "${w}x${h} ${fps}"
 }
 
-# $1: "WIDTHxHEIGHT FPS". True for 3840x2160 at 59..60.5 fps (59.94 is valid 4K60).
-is_4k60() {
+# $1: "WIDTHxHEIGHT FPS", $2: expected WIDTHxHEIGHT. True if the size matches
+# and the rate is 59..60.5 fps (59.94 counts as 60 Hz).
+mode_ok() {
     local res="${1% *}" fps="${1#* }"
-    [[ "$res" == "3840x2160" ]] || return 1
+    [[ "$res" == "$2" ]] || return 1
     awk -v f="$fps" 'BEGIN { exit !(f >= 59 && f <= 60.5) }'
 }
 
