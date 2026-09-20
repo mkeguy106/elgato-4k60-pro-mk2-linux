@@ -419,3 +419,21 @@ from autoloading; to revisit once the driver has more hours on it and kernel
   the Switch already outputting, three mislabelled the rate (p30, p30, p30)
   and one got p60; the 119.88 reading came later on the first of them. It is
   the usual case after a load, not a rare one.
+
+## Kernel updates (2026-09-19)
+
+Checked how the install behaves across `pacman -Syu` with a new kernel:
+
+- Headers for both kernels are explicitly installed, and the stock dkms hooks
+  (`70-dkms-install`, `70-dkms-upgrade`, `71-dkms-remove`) trigger on
+  `usr/lib/modules/*/build/include/`, so the module is rebuilt automatically.
+- `kernel-modules-hook` is not installed: after a kernel upgrade the running
+  kernel's modules are gone from disk, and an unloaded sc0710 cannot be loaded
+  until reboot.
+- `play.sh` now tells these cases apart before asking for authorization
+  (`module_problem` in `verify-lib.sh`, with tests): "reboot to finish the
+  update", "driver not built for this kernel", or the generic load failure.
+  Tested in a bubblewrap sandbox with an empty `/proc/modules`, fake module
+  trees and stub `sudo`/`pkexec`/`notify-send`, so the loaded driver and the
+  running player were not disturbed. Not yet seen with a real kernel update.
+- README gained a "Kernel updates" section with the recovery steps.

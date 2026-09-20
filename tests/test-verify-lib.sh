@@ -76,6 +76,18 @@ check "parse_mean_volume no data"  "1" "$(status parse_mean_volume <<<"nothing")
 check "volume_ok accepts -23.5"    "0" "$(status volume_ok -23.5)"
 check "volume_ok rejects silence"  "1" "$(status volume_ok -91.0)"
 
+# Fake /usr/lib/modules: one kernel with the DKMS module, one without, and one
+# whose package was upgraded away (pacman leaves only depmod leftovers behind).
+mods="$root/modules"
+mkdir -p "$mods/6.18.1-ok/kernel" "$mods/6.18.1-ok/updates/dkms" \
+    "$mods/7.3.0-nobuild/kernel" "$mods/6.18.0-upgraded"
+touch "$mods/6.18.1-ok/updates/dkms/sc0710.ko.zst" "$mods/6.18.0-upgraded/modules.dep"
+export MODULES_ROOT="$mods"
+check "module_problem: module present"       "present"   "$(module_problem 6.18.1-ok)"
+check "module_problem: not built"            "not-built" "$(module_problem 7.3.0-nobuild)"
+check "module_problem: kernel upgraded away" "reboot"    "$(module_problem 6.18.0-upgraded)"
+check "module_problem: directory missing"    "reboot"    "$(module_problem 6.17.9-gone)"
+
 echo
 if (( failures )); then echo "$failures test(s) failed"; exit 1; fi
 echo "all tests passed"

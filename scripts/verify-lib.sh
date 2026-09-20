@@ -109,3 +109,20 @@ audio_defaults() {
 pipewire_name_for() {
     echo "pci-${1//:/_}"
 }
+
+# Say why `modprobe sc0710` cannot work on kernel release $1:
+#   reboot     the release has no kernel/ tree any more: its package was upgraded
+#              and the machine still runs the old kernel
+#   not-built  the kernel is installed but holds no sc0710 module (the DKMS
+#              build failed or never ran for it)
+#   present    a module file exists, so the cause lies elsewhere
+module_problem() {
+    local dir="${MODULES_ROOT:-/usr/lib/modules}/$1"
+    if [[ ! -d "$dir/kernel" ]]; then
+        echo reboot
+    elif [[ -n "$(find "$dir" -name 'sc0710.ko*' -print -quit 2>/dev/null)" ]]; then
+        echo present
+    else
+        echo not-built
+    fi
+}

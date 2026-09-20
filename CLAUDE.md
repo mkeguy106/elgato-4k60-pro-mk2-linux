@@ -36,6 +36,12 @@ Specs and plans: `docs/superpowers/`. Results so far: `docs/bring-up-log.md`.
   capture fails with ENOMEM at STREAMON, check `grep -i cma /proc/meminfo`.
 - Never probe `limine-update` with `--help`: it ignores arguments, elevates
   itself through sudo and rebuilds the boot entries and both initramfs images.
+- Kernel updates: the stock dkms pacman hooks rebuild the module when a headers
+  package is upgraded (both headers packages are explicitly installed).
+  `kernel-modules-hook` is not installed, so after a kernel upgrade an unloaded
+  module cannot be loaded until reboot; `module_problem` in `verify-lib.sh`
+  tells `play.sh` which case it is. A failed build on a new kernel series is
+  fixed by moving the `driver/` pin, never by editing `/usr/src`.
 - Installing or upgrading the package rebuilds both initramfs images (CachyOS
   limine hook). Expected; only the blacklist file ends up inside them.
 - The driver may announce 30 or 119.88 fps after a module load while delivering

@@ -67,6 +67,37 @@ A reboot removes it completely.
 The package installs `/etc/modprobe.d/sc0710-blacklist.conf`, so the module
 loads only when you run `modprobe sc0710`, never automatically at boot.
 
+## Kernel updates
+
+DKMS rebuilds the module whenever a kernel's headers package is upgraded, so
+keep the headers package installed for every kernel you boot
+(`linux-cachyos-lts-headers`, `linux-headers`, ...). After an update that
+brought a new kernel:
+
+    dkms status sc0710        # one line per kernel, each ending in "installed"
+
+Two things can stop the card working; neither affects booting, because the
+module is not in the initramfs and is never loaded automatically.
+
+- **Until the next reboot.** Upgrading the kernel package removes the running
+  kernel's modules from disk. If the driver was not loaded before the update it
+  cannot be loaded until you reboot. `play.sh` says so.
+- **The build fails on a new kernel series.** This is an out-of-tree driver
+  pinned to one tested commit. Point releases of an LTS kernel are very
+  unlikely to break it; a new major series occasionally will. pacman prints
+  the DKMS error and carries on, and `dkms status` shows no `installed` line
+  for that kernel; the build log is
+  `/var/lib/dkms/sc0710/<version>/build/make.log`. Boot a kernel that still has
+  the module, then move `driver/` to an upstream commit that supports the new
+  kernel, rebuild the package and reinstall it:
+
+      git -C driver fetch origin && git -C driver checkout <commit>
+      cd packaging && makepkg -f && sudo pacman -U sc0710-mk2-dkms-*.pkg.tar.zst
+
+The `cma=` parameter survives kernel updates as long as it is in the file your
+boot loader tooling generates entries from (`/etc/kernel/cmdline` on CachyOS
+with Limine).
+
 ## Verify
 
 Connect a source with HDCP off and sound playing, then:

@@ -55,8 +55,15 @@ module_loaded() { grep -q '^sc0710 ' /proc/modules; }
 
 fresh_load=0
 if ! module_loaded; then
+    # Diagnose before asking for authorization that cannot help.
+    case "$(module_problem "$(uname -r)")" in
+        reboot)
+            die "the kernel was updated since the last boot. Reboot to finish the update, then start the player again." ;;
+        not-built)
+            die "the driver is not built for kernel $(uname -r). Check 'dkms status sc0710'; see README.md, \"Kernel updates\"." ;;
+    esac
     load_module && module_loaded \
-        || die "could not load the sc0710 module (try: sudo modprobe sc0710; is the package installed?)"
+        || die "could not load the sc0710 module (try in a terminal: sudo modprobe sc0710)"
     fresh_load=1
 fi
 
