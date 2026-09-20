@@ -80,12 +80,18 @@ to look at.
 ## Play
 
     scripts/play.sh
+    scripts/install-desktop-entry.sh    # optional: adds it to the app menu (--remove undoes it)
 
 Low-latency live view: mpv shows the video as frames arrive, and a PipeWire
 loopback plays the card's audio. Needs `mpv` and PipeWire (`pw-loopback`,
 `pactl`). Volume is controlled inside the mpv window with 9/0, / and *, the
 mouse wheel, and m to mute. Other programs (OBS, ffmpeg) can capture from the
 card at the same time.
+
+If the module is not loaded, `play.sh` loads it: silently where `sudo` needs no
+password, otherwise through the desktop's authorization dialog (`pkexec
+modprobe sc0710`). Started from the app menu, problems are reported as desktop
+notifications. Only one instance runs at a time.
 
 ## Unload
 

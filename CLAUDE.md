@@ -15,6 +15,8 @@ Specs and plans: `docs/superpowers/`. Results so far: `docs/bring-up-log.md`.
     sudo modprobe sc0710                 # load the installed module
     scripts/verify.sh [WIDTHxHEIGHT]     # automated checks (default 1920x1080); needs a live source with sound
     scripts/play.sh                      # live view: mpv video + PipeWire audio loopback
+    scripts/install-desktop-entry.sh     # app menu entry for play.sh (generated: holds this clone's path)
+    bash tests/test-install-desktop-entry.sh
     scripts/unload.sh                    # stop PipeWire, rmmod, restart PipeWire
 
 ## Rules
@@ -47,6 +49,11 @@ Specs and plans: `docs/superpowers/`. Results so far: `docs/bring-up-log.md`.
 - mpv cannot play the card's audio itself (`--audio-file=av://alsa:` is
   silent); one muxed ffmpeg stream into mpv works but adds about 1.5 s. That is
   why `play.sh` keeps video and audio on separate paths.
+- `play.sh` is a long-running bash script: never edit it in place while the
+  player is open (bash reads scripts incrementally). Write a copy and `mv` it
+  over. It loads the module itself (`sudo -n`, then `pkexec`), holds a lock in
+  `$XDG_RUNTIME_DIR`, and sets the mpv app id `elgato-4k60-play`, which must
+  stay equal to the desktop entry's file name.
 - Scripts that parse numbers must set `LC_ALL=C` (system locale uses a comma
   decimal separator).
 - Under `set -o pipefail`, test for the module with `/proc/modules`, not

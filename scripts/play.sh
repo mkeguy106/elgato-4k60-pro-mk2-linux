@@ -12,6 +12,7 @@
 #
 # Usage: scripts/play.sh [extra mpv options]
 #        AUDIO_LATENCY_MS=20 scripts/play.sh     (loopback latency, default 20)
+# App menu entry: scripts/install-desktop-entry.sh
 set -uo pipefail
 export LC_ALL=C
 
@@ -19,27 +20,63 @@ here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=verify-lib.sh
 source "$here/verify-lib.sh"
 
-die() { echo "play.sh: $*" >&2; exit 1; }
+# Started from the app menu there is no terminal, so messages also go to a
+# desktop notification.
+notify() {
+    [[ -t 2 ]] && return 0
+    command -v notify-send >/dev/null || return 0
+    notify-send -a "Elgato 4K60 Pro Mk.2" -i camera-video "Elgato 4K60 Pro Mk.2" "$1" || true
+}
+warn() { echo "play.sh: $*" >&2; notify "$*"; }
+die() { warn "$@"; exit 1; }
 
-grep -q '^sc0710 ' /proc/modules \
-    || die "the sc0710 module is not loaded (sudo modprobe sc0710, or sudo insmod driver/build/sc0710.ko)"
+# wait_for SECONDS COMMAND...: retry the command until it succeeds.
+wait_for() {
+    local tries=$(( $1 * 5 )); shift
+    for (( ; tries > 0; tries-- )); do
+        "$@" && return 0
+        sleep 0.2
+    done
+    return 1
+}
+
+# A second instance would play the sound twice.
+exec 9>"${XDG_RUNTIME_DIR:-/tmp}/elgato-4k60-play.lock"
+flock -n 9 || die "the player is already running"
+
+# The package keeps the module from loading at boot, so load it on demand:
+# without a prompt where sudo allows that, otherwise through the desktop's
+# authorization dialog. Only modprobe runs as root.
+load_module() {
+    sudo -n modprobe sc0710 2>/dev/null && return 0
+    command -v pkexec >/dev/null && pkexec modprobe sc0710
+}
+module_loaded() { grep -q '^sc0710 ' /proc/modules; }
+
+fresh_load=0
+if ! module_loaded; then
+    load_module && module_loaded \
+        || die "could not load the sc0710 module (try: sudo modprobe sc0710; is the package installed?)"
+    fresh_load=1
+fi
+
 addr="$(find_pci_addr)" || die "no Elgato 4K60 Pro Mk.2 found on the PCI bus"
-node="$(find_video_node "$addr")" || die "the card has no V4L2 node"
+have_node() { node="$(find_video_node "$addr")"; }
+wait_for 5 have_node || die "the card has no V4L2 node"
 pw="$(pipewire_name_for "$addr")"
 
 find_source() { pactl list short sources | cut -f2 | grep -F "alsa_input.$pw." | head -n 1; }
+have_source() { src="$(find_source)"; [[ -n "$src" ]]; }
 
-src="$(find_source)"
-if [[ -z "$src" ]]; then
+# Right after a module load PipeWire needs a moment to pick the card up.
+src=""
+(( fresh_load )) && wait_for 5 have_source
+if ! have_source; then
     # PipeWire can list the card's input profile as active without creating the
     # node (seen when another program held the device at probe time).
     pactl set-card-profile "alsa_card.$pw" off
     pactl set-card-profile "alsa_card.$pw" input:stereo-fallback
-    for _ in $(seq 1 20); do
-        src="$(find_source)"
-        [[ -n "$src" ]] && break
-        sleep 0.2
-    done
+    wait_for 4 have_source
 fi
 
 log="$(mktemp)"
@@ -53,25 +90,30 @@ trap cleanup EXIT
 if [[ -n "$src" ]]; then
     # The driver only delivers audio while video is streaming, so give mpv a
     # moment to start before the loopback opens the source.
-    ( sleep 1; exec pw-loopback -C "$src" -l "${AUDIO_LATENCY_MS:-20}" -n elgato-capture-audio ) &
+    ( sleep 1; exec pw-loopback -C "$src" -l "${AUDIO_LATENCY_MS:-20}" -n elgato-capture-audio ) 9>&- &
     audio_pid=$!
 else
-    echo "play.sh: PipeWire has no audio source for the card; continuing without sound" >&2
+    warn "PipeWire has no audio source for the card; continuing without sound"
 fi
 
+# The app id ties the window to the menu entry (icon, task manager grouping).
 mpv "av://v4l2:$node" --demuxer-lavf-o=input_format=yuyv422 \
     --profile=low-latency --untimed --no-audio \
     --script="$here/mpv-game-volume.lua" \
-    --title="Elgato 4K60 Pro Mk.2" --log-file="$log" "$@"
+    --title="Elgato 4K60 Pro Mk.2" \
+    --wayland-app-id=elgato-4k60-play --x11-name=elgato-4k60-play \
+    --log-file="$log" "$@"
 
 if grep -q 'Cannot allocate memory' "$log"; then
+    notify "The driver could not get contiguous memory. Run scripts/play.sh in a terminal for what to do."
     cat >&2 <<'MSG'
 play.sh: the driver could not get contiguous memory for its DMA buffers.
 It needs four 4 MB physically contiguous blocks below 4 GB, and after long
 uptime there may be none. Free some and try again:
     sudo sh -c 'sync; echo 3 > /proc/sys/vm/drop_caches'
     sudo sh -c 'echo 1 > /proc/sys/vm/compact_memory'
-The durable fix is cma=256M on the kernel command line. See docs/bring-up-log.md.
+The durable fix is cma=256M@0-4G on the kernel command line (plain cma=256M
+lands above 4 GB and does not help). See README.md, "Before you start".
 MSG
     exit 1
 fi
