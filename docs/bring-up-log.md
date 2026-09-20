@@ -393,3 +393,29 @@ frame rate label problem in the driver.
 Boot guard decision (user, 2026-09-19): keep it. The module stays blacklisted
 from autoloading; to revisit once the driver has more hours on it and kernel
 7.2 has been run once by hand.
+
+## Player: app menu launcher (2026-09-19)
+
+- `scripts/install-desktop-entry.sh` generates
+  `~/.local/share/applications/elgato-4k60-play.desktop` (the entry holds the
+  clone's absolute path, so it is not shipped as a file); `--remove` deletes it.
+- `scripts/play.sh` now loads the module when it is missing (`sudo -n modprobe
+  sc0710`, else `pkexec modprobe sc0710`), waits for the V4L2 node and the
+  PipeWire source after a fresh load, reports problems as desktop notifications
+  when there is no terminal, allows one instance at a time (lock in
+  `$XDG_RUNTIME_DIR`; a second one would double the sound), and gives the mpv
+  window the app id `elgato-4k60-play` so the desktop matches it to the entry.
+  The contiguous-memory message now names `cma=256M@0-4G`.
+- Live test by the user, module unloaded with `scripts/unload.sh` first, then
+  started from the app menu: "works". Machine side: `play.sh` was started by
+  the session's systemd with no terminal, ran `modprobe sc0710` through sudo
+  without a prompt (19:18:51, 24 s after the unload), and the PipeWire source
+  was present with the loopback attached on that first launch.
+- The already-running guard was tested by holding the lock: the second
+  instance exits with a notification and leaves the running player alone.
+- While the old `play.sh` was still running, the new version was swapped in
+  with `mv`, not edited in place: bash reads a running script incrementally.
+- Problem 2 tally: this load again picked `1920x1080p30`. Of four loads with
+  the Switch already outputting, three mislabelled the rate (p30, p30, p30)
+  and one got p60; the 119.88 reading came later on the first of them. It is
+  the usual case after a load, not a rare one.
