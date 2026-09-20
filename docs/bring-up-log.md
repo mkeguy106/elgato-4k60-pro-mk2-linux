@@ -390,3 +390,6 @@ verified: 3840x2160 at 60 Hz (no such source), kernel 7.2.5-1-cachyos at run
 time. The boot guard is still in place. Next: the player (`scripts/play.sh`
 exists and is in daily use; desktop entry and a short spec are left), and the
 frame rate label problem in the driver.
+Boot guard decision (user, 2026-09-19): keep it. The module stays blacklisted
+from autoloading; to revisit once the driver has more hours on it and kernel
+7.2 has been run once by hand.
