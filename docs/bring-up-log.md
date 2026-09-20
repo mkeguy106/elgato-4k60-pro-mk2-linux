@@ -323,4 +323,61 @@ read a root-capable tool's script or man page instead of probing it with
   collided with its predecessor's timestamp. No frames were dropped; a
   recorder that trusts the advertised rate would be affected, `play.sh`
   (`--untimed`) is not.
-- Tears, frame shifts or audio dropouts seen by the user: (to be filled in)
+- Tears, frame shifts or audio dropouts seen by the user: none reported
+  ("seemed fine to me").
+
+### OBS, and OBS together with mpv (18:48-19:03)
+
+OBS 32.2.2 with a "Video Capture Device (V4L2)" source on `/dev/video2`
+(YUYV 4:2:2, 1920x1080) and an "Audio Input Capture (PulseAudio)" source on
+`alsa_input.pci-0000_03_00.0.stereo-fallback`, running for 15 minutes while
+`scripts/play.sh` (mpv + loopback) kept streaming from the same card.
+
+- No stall, crash or machine hang (upstream issues #79 and #48 did not
+  reproduce at 1080p60). Both programs held `/dev/video2` throughout; the
+  PipeWire source served the loopback and OBS at the same time.
+- OBS Stats after about 14 minutes: FPS 60.00, average render time 0.7 ms,
+  frames missed due to rendering lag 4 / 51161 (0.0%), CPU 0.6%, memory
+  607.5 MB. Nothing was recorded or streamed, so encoder skips do not apply.
+- Kernel log from OBS start to the end of the check: no sc0710 lines, no
+  kernel warnings of any kind. `CmaFree` unchanged at 235164 kB.
+- OBS opened the device as `Framerate: 30.00 fps` (Problem 2: this module
+  load labelled the signal p30). OBS's 60.00 is its own render rate, so it
+  does not show how many distinct capture frames per second reached the
+  preview. Smoothness of the OBS preview and the Elgato audio meter were not
+  reported by the user; OBS's log shows audio packets arriving from the card.
+
+### Summary
+
+| Check | Result | Notes |
+|---|---|---|
+| mpv live view with audio | pass | `scripts/play.sh` on the DKMS module after the reboot; user: "seemed fine to me". Stream labelled 30 fps by the driver, shown untimed at the real 60. |
+| OBS 15 minutes | pass | 4 / 51161 frames missed (0.0%), no kernel lines |
+| OBS + mpv together | pass | both live for the whole OBS run |
+| 30-minute 1080p60 soak | 107998 frames, rate OK | no tears reported; no kernel lines; ffmpeg + mpv as two clients |
+
+Player command: `scripts/play.sh` (replaces the plan's interim mpv command).
+
+## Known problems observed
+
+- **Frame rate label after module load (Problem 2).** On some loads the first
+  detection logs `No FPS Hint -> Pick 1920x1080p30` (or reports 119.88 fps)
+  for a 60 Hz source; after any signal re-lock it reads p60. Delivery is
+  always 60 frames per second. Effects seen: mpv and OBS announce 30 fps,
+  ffmpeg warns about non-monotonic timestamps on every second frame, and
+  `verify.sh`'s `signal` check fails on such a load. Reproduce: load the
+  module with the Switch already outputting and read the kernel log; not every
+  load shows it. Workaround: make the source re-lock (replug HDMI or
+  sleep/wake the console). Upstream knobs to examine: `hdmi_rate_decode`,
+  `procedural_timings`. Not investigated.
+- **Contiguous memory at stream start (Problem 1).** Fixed on this machine by
+  `cma=256M@0-4G`; any other machine with more than 4 GB of RAM needs the
+  same, or an IOMMU. At 3840x2160 each DMA chain would be about 16 MB, which
+  only a CMA pool can supply.
+- **mpv cannot take the card's audio directly** (`--audio-file=av://alsa:` is
+  silent, and an external audio input is not reopened after a signal loss);
+  `play.sh` routes audio through a PipeWire loopback instead.
+- **Installing or upgrading the package rebuilds both initramfs images**
+  (CachyOS limine hook reacting to the modprobe.d file). Harmless, slow.
+- 4K60, HDR and 10-bit were not exercised: the only source is a 1080p60 SDR
+  console.
