@@ -381,3 +381,12 @@ Player command: `scripts/play.sh` (replaces the plan's interim mpv command).
   (CachyOS limine hook reacting to the modprobe.d file). Harmless, slow.
 - 4K60, HDR and 10-bit were not exercised: the only source is a 1080p60 SDR
   console.
+
+## Close-out (2026-09-19)
+
+Bring-up is complete for the scope that can be tested here: 1080p60 SDR video
+and audio through the DKMS-installed module on 6.18.50-3-cachyos-lts. Not
+verified: 3840x2160 at 60 Hz (no such source), kernel 7.2.5-1-cachyos at run
+time. The boot guard is still in place. Next: the player (`scripts/play.sh`
+exists and is in daily use; desktop entry and a short spec are left), and the
+frame rate label problem in the driver.
