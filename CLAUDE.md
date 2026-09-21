@@ -29,7 +29,9 @@ Specs and plans: `docs/superpowers/`. Results so far: `docs/bring-up-log.md`.
 - The pin is the fork branch `silence-clock-pacing` (`e0ab897`): upstream
   `ea0a712` plus one patch that paces no-signal silence by `ktime` (the stock
   code ran the 48 kHz stream at ~42.4 kHz without a signal). When moving the
-  pin to a newer upstream, rebase that branch unless upstream has merged it,
+  pin to a newer upstream, rebase that branch unless upstream has merged it
+  (offered as Nakildias/sc0710#89; the user wants AI involvement disclosed in
+  upstream PRs, while commit messages stay free of it),
   and check with `scripts/audio-clock-check.sh` with the source switched off.
 - The card must stay PipeWire's graph clock (capture nodes get
   `priority.driver` 2000, outputs ~1000). A WirePlumber rule that lowers it was

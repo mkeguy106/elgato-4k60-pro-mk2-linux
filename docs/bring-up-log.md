@@ -511,7 +511,10 @@ the 20th; the check that claimed otherwise, `pgrep -fc 'mpv av://v4l2'`,
 matched the shell running it. The patched module was loaded for those 29
 hours, but exercised for 19 minutes. Use `pgrep -f '[m]pv av://v4l2'`.
 
-Still to do: offer the patch upstream. Not changed: the 100 ms the watchdog
+Offered upstream on 2026-09-21: https://github.com/Nakildias/sc0710/pull/89
+(the description discloses, at the user's request, that the diagnosis and patch
+were made with an AI coding assistant, and lists what was not tested).
+Not changed: the 100 ms the watchdog
 waits before it starts feeding silence, so other audio can drop out once for
 that long at the moment the signal disappears.
 
