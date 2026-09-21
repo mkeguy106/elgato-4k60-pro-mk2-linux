@@ -437,3 +437,83 @@ Checked how the install behaves across `pacman -Syu` with a new kernel:
   trees and stub `sudo`/`pkexec`/`notify-send`, so the loaded driver and the
   running player were not disturbed. Not yet seen with a real kernel update.
 - README gained a "Kernel updates" section with the recovery steps.
+
+## Other programs' audio stutters while the console is off (2026-09-20/21)
+
+Report: with the player open and the Switch off, Jellyfin's sound stuttered;
+it stopped as soon as the Switch was turned on.
+
+### Root cause
+
+1. With no HDMI signal the driver keeps the ALSA capture stream alive by
+   feeding silence (`driver/lib/sc0710-audio.c`, delivery-gap watchdog). It fed
+   a fixed 480 frames and then re-armed a *relative* 10 ms delayed work. Each
+   cycle really takes about 11.3 ms (timer rounding at HZ=1000 plus worker
+   latency), so the 48 kHz stream advanced at 42446 Hz (measured: `hw_ptr`
+   gained 84960 frames in 2.00 s, in steps of 480).
+2. PipeWire gives ALSA capture nodes `priority.driver` 2000 and the built-in
+   output 1009. `play.sh`'s `pw-loopback` links the two, so the capture card
+   becomes the clock of the whole playback graph (`pw-top`: the card's node on
+   the first line, the output, Jellyfin and the loopback as `+` followers).
+3. The output, a follower of a clock running 11.6 % slow, ran dry:
+   `spa.alsa: front:3p: follower avail:234 ... target:512, resync (27
+   suppressed)` every 2 s, about 14 resyncs per second, from the second the
+   player was opened until the loopback was stopped. With the Switch on the
+   card's audio comes from real HDMI samples at 48 kHz and nothing is wrong.
+
+### First fix attempt, reverted
+
+A WirePlumber rule lowering the card's `priority.driver` to 100 made the
+speakers the graph clock. Jellyfin was clean, but with the Switch on the card
+delivers audio in 1024-frame bursts on the video frame interrupt (16.7 ms
+apart with roughly every fourth slot skipped, 33 ms), and as a clock follower
+its stream was resynchronised constantly: 95 `hw:5c: follower ... resync`
+lines in six minutes, some hiding 160 repeats, 4907 node errors. For
+comparison, 30 minutes with the card as clock and a signal present (the soak)
+produced 3 lines. The user heard nothing wrong, but it was a regression in the
+game audio, so the rule was removed. `priority.driver` cannot be changed at
+runtime (`pw-cli set-param ... Props` is accepted and ignored).
+
+### Fix
+
+Driver patch `e0ab897` on the fork branch `silence-clock-pacing` (upstream
+`ea0a712` plus this one commit; upstream had nothing newer): the watchdog
+feeds the number of frames owed at 48 kHz since the gap began, by `ktime`. The
+clock restarts when real samples resume and when the worker was held up for
+more than 50 ms (never floods the ring buffer), and is rebased every second's
+worth of frames so the multiplication cannot overflow. All new state is
+touched only from the existing work item. A model of the arithmetic gives
+42478 Hz for the old scheme and 47999.9 Hz for the new one.
+
+Tested as a hand-built module (`insmod`, nothing installed), card as graph
+clock again, no rule:
+
+| | unpatched | patched |
+|---|---|---|
+| `scripts/audio-clock-check.sh`, Switch off | 42446 Hz | 48032 Hz, 48018 Hz |
+| speaker resync lines, Switch off | one every 2 s | none |
+| Switch on (signal restored 13:16:43, detected p60) | fine | fine |
+| `spa.alsa` lines over the following 29 h, player open throughout | - | 1 |
+| driver errors | 0 | 0 |
+
+User: Jellyfin "sounds fine" with the player open and the Switch off; game
+audio fine.
+
+Made permanent on 2026-09-21: branch pushed to the fork, pin moved, package
+`sc0710-mk2-dkms 2026.09.02.1.r224.e0ab897-1` installed over r223 (snapshots
+5248/5249), DKMS `installed` for both kernels, header checksums unchanged. The
+installed module has the same `srcversion` (DC5C7C3DFCEED15261BBC68) as the
+tested build, which stayed loaded through the upgrade: no unload was needed.
+
+Still to do: offer the patch upstream. Not changed: the 100 ms the watchdog
+waits before it starts feeding silence, so other audio can drop out once for
+that long at the moment the signal disappears.
+
+### Side effect to know about
+
+`scripts/unload.sh` restarts PipeWire. That disconnected every program's
+audio; the Jellyfin desktop client did not reconnect and had to be restarted.
+Now stated in the README.
+
+New: `scripts/audio-clock-check.sh` measures the real rate of the card's audio
+stream from `hw_ptr` (fails outside 48000 +/- 1 %).

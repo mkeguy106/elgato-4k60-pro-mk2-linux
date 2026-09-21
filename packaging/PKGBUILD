@@ -2,7 +2,7 @@
 # Local package: DKMS tree built from ../driver at its checked-out commit.
 pkgname=sc0710-mk2-dkms
 _modname=sc0710
-pkgver=2026.09.02.1.r223.ea0a712
+pkgver=2026.09.02.1.r224.e0ab897
 pkgrel=1
 pkgdesc="DKMS driver for the Elgato 4K60 Pro Mk.2 capture card (mkeguy106/sc0710 fork)"
 arch=('x86_64')

@@ -108,6 +108,12 @@ Connect a source with HDCP off and sound playing, then:
 It prints one PASS/FAIL/LOOK line per check and saves a frame to `out/` for you
 to look at.
 
+    scripts/audio-clock-check.sh   # while something captures audio from the card
+
+prints how fast the card's 48 kHz audio stream really advances. It must be
+within 1 % of 48000 with and without an HDMI signal, because sound servers use
+the card as a clock (see "Known problems").
+
 ## Play
 
     scripts/play.sh
@@ -132,6 +138,10 @@ PipeWire holds the device nodes open, so a plain `rmmod` is refused. The script
 stops PipeWire, unloads, and restarts it. Close the player and any capture
 program first. Never use `rmmod -f`.
 
+Restarting PipeWire cuts the sound of every running program for a moment. Most
+reconnect by themselves; some do not and need their playback or the program
+restarted (seen with the Jellyfin desktop client).
+
 ## Known problems
 
 - After some module loads the driver announces the wrong frame rate for a
@@ -139,6 +149,15 @@ program first. Never use `rmmod -f`.
   60 frames per second. `play.sh` is not affected; OBS and ffmpeg show the
   wrong number. Unplugging and replugging HDMI, or putting the console to
   sleep and waking it, corrects it.
+- Fixed in the pinned driver commit, still present upstream: with no HDMI signal
+  the driver's 48 kHz audio stream advanced at about 42.4 kHz. PipeWire makes a
+  capture device the clock of any graph it is linked into, so with the player
+  (or an OBS monitor mix) open and the console off, all other sound on the same
+  output stuttered. `driver/` therefore points at the fork's
+  `silence-clock-pacing` branch: upstream plus that one patch. Do not work
+  around it by lowering the card's `priority.driver` in WirePlumber: the card
+  delivers audio in 1024-frame bursts on the video interrupt, and as a clock
+  follower its own audio gets resynchronised constantly.
 - Details and the rest of the list: `docs/bring-up-log.md`.
 
 ## Roll back

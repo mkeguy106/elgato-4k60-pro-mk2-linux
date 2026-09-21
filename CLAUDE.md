@@ -17,6 +17,7 @@ Specs and plans: `docs/superpowers/`. Results so far: `docs/bring-up-log.md`.
     scripts/play.sh                      # live view: mpv video + PipeWire audio loopback
     scripts/install-desktop-entry.sh     # app menu entry for play.sh (generated: holds this clone's path)
     bash tests/test-install-desktop-entry.sh
+    scripts/audio-clock-check.sh [SECS]  # real rate of the card's audio stream; needs a capturing program
     scripts/unload.sh                    # stop PipeWire, rmmod, restart PipeWire
 
 ## Rules
@@ -25,6 +26,22 @@ Specs and plans: `docs/superpowers/`. Results so far: `docs/bring-up-log.md`.
   `Nakildias/sc0710`). Driver changes go on topic branches in the fork and are
   offered upstream; the project repo pins the tested commit. Packaging lives in
   `packaging/`, not in the fork, to keep the fork mergeable.
+- The pin is the fork branch `silence-clock-pacing` (`e0ab897`): upstream
+  `ea0a712` plus one patch that paces no-signal silence by `ktime` (the stock
+  code ran the 48 kHz stream at ~42.4 kHz without a signal). When moving the
+  pin to a newer upstream, rebase that branch unless upstream has merged it,
+  and check with `scripts/audio-clock-check.sh` with the source switched off.
+- The card must stay PipeWire's graph clock (capture nodes get
+  `priority.driver` 2000, outputs ~1000). A WirePlumber rule that lowers it was
+  tried on 2026-09-20 and reverted: with a signal the card delivers 1024-frame
+  bursts on the video interrupt, and as a follower its audio is resynced
+  constantly. `priority.driver` cannot be changed at runtime with `pw-cli`.
+  Evidence for audio clock trouble: `journalctl --user -u pipewire | grep
+  spa.alsa` ("follower ... resync") and `pw-top -b -n 2`.
+- `scripts/unload.sh` restarts PipeWire, which cuts every program's sound; some
+  (Jellyfin desktop) do not reconnect. Warn the user before running it. An
+  upgraded package does not need an unload: the running module keeps working
+  and the new file is used from the next load.
 - Never run the fork's `scripts/install-sc0710.sh` or `scripts/sc0710-cli.sh`.
 - Never `rmmod -f`. Use `scripts/unload.sh`, after closing the player and any
   capture program.
