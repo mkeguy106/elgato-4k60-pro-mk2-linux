@@ -526,3 +526,46 @@ Now stated in the README.
 
 New: `scripts/audio-clock-check.sh` measures the real rate of the card's audio
 stream from `hw_ptr` (fails outside 48000 +/- 1 %).
+
+## Problem 2 investigated: the MCU's rate byte is not a rate for this source (2026-09-21)
+
+How the driver labels the frame rate: it polls the MCU status block
+(subaddress 0x00, 0x14 bytes) every 200 ms. Bytes 04-05 / 06-07 are the V / H
+totals, 08-09 / 0a-0b height / width, 0d flags, and byte **0c** is taken as the
+refresh rate in Hz (`hdmi_rate_decode=1`; the older reading was 3600 / byte).
+The format is the table entry with matching totals whose fps is nearest to
+that byte; with byte 0 it logs "No FPS Hint" and takes the first match, which
+for 2200x1125 is 1080p30. A change of 0c or 0d while locked re-runs detection.
+
+Experiment: debug mode on, player closed, the Switch (always 1080p60) powered
+on and off five times. Raw status block at each lock:
+
+    18:19:05  2f 00 00 00 65 04 98 08 38 04 80 07 34 10 02 02 05 00 00 80   0c=52  -> 1080p60 (nearest, right by luck)
+    18:19:43  2f 00 00 00 65 04 98 08 38 04 80 07 62 50 02 02 05 00 00 80   0c=98  -> 1080p119.88
+    18:20:22  (same as above)                                               0c=98  -> 1080p119.88
+    18:21:07  (same as above)                                               0c=98  -> 1080p119.88
+    18:21:54  2f 00 00 00 65 04 98 08 38 04 80 07 34 50 02 02 05 00 00 80   0c=52  -> 1080p60 (by luck)
+
+- One and the same signal gives 52 or 98 (and 0 after most module loads with
+  the Switch already on). Neither reading fits 60 Hz: as a rate 52 / 98 Hz, as
+  a period 3600/52 = 69 and 3600/98 = 36.
+- The byte never changed while locked (no re-detection in any of the windows;
+  on 2026-09-19 a wrong label lasted a whole 40-minute session), so it looks
+  like a value the MCU latches once at lock time and does not refresh.
+- The undecoded bytes 00-03 (`2f 00 00 00`) and 10-13 (`05 00 00 80`) were
+  identical in all five locks and with no signal, so they do not hold a pixel
+  clock. With no signal the block keeps the stale totals and zeroes 08-0c.
+- Bit 6 of the flags byte (0x40) was clear on the first lock after a long
+  pause and set on the others; it does not correlate with 52 / 98.
+
+Tools: `echo 1 > /sys/module/sc0710/parameters/mcu_scan` (root) dumps the MCU
+register space to the kernel log, read-only and without a reload; rows are
+the same flat block at shifting offsets. `sc0710_debug_mode` can be switched
+at runtime and prints the raw block at every detection, plus about ten lines
+a second while there is no signal, so keep such windows short. Raw log of the
+experiment: `out/rate-experiment.log` (not tracked).
+
+Root cause as far as established: the driver trusts a byte that, on this card
+with this source, is not a usable refresh rate. Not yet known: whether any
+other MCU register carries the real rate while a signal is present (needs a
+scan with the Switch on), and what the byte means on this card.
