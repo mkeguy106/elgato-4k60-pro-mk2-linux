@@ -493,7 +493,7 @@ clock again, no rule:
 | `scripts/audio-clock-check.sh`, Switch off | 42446 Hz | 48032 Hz, 48018 Hz |
 | speaker resync lines, Switch off | one every 2 s | none |
 | Switch on (signal restored 13:16:43, detected p60) | fine | fine |
-| `spa.alsa` lines over the following 29 h, player open throughout | - | 1 |
+| `spa.alsa` lines in the test session (2 min Switch off, then 17 min of play) | - | 1, at the instant the signal returned (3 resyncs) |
 | driver errors | 0 | 0 |
 
 User: Jellyfin "sounds fine" with the player open and the Switch off; game
@@ -504,6 +504,12 @@ Made permanent on 2026-09-21: branch pushed to the fork, pin moved, package
 5248/5249), DKMS `installed` for both kernels, header checksums unchanged. The
 installed module has the same `srcversion` (DC5C7C3DFCEED15261BBC68) as the
 tested build, which stayed loaded through the upgrade: no unload was needed.
+
+Correction (2026-09-21): an earlier version of this entry said the player had
+been open for 29 hours with one log line. It had been closed at 13:33:43 on
+the 20th; the check that claimed otherwise, `pgrep -fc 'mpv av://v4l2'`,
+matched the shell running it. The patched module was loaded for those 29
+hours, but exercised for 19 minutes. Use `pgrep -f '[m]pv av://v4l2'`.
 
 Still to do: offer the patch upstream. Not changed: the 100 ms the watchdog
 waits before it starts feeding silence, so other audio can drop out once for

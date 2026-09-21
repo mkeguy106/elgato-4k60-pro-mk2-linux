@@ -79,6 +79,9 @@ Specs and plans: `docs/superpowers/`. Results so far: `docs/bring-up-log.md`.
   stay equal to the desktop entry's file name.
 - Scripts that parse numbers must set `LC_ALL=C` (system locale uses a comma
   decimal separator).
+- `pgrep -f PATTERN` from a tool shell matches the shell's own command line.
+  Write the pattern as `'[m]pv av://v4l2'`, or the player looks open when it
+  is not (this produced a wrong log entry on 2026-09-21).
 - Under `set -o pipefail`, test for the module with `/proc/modules`, not
   `lsmod | grep -q`.
 - Kernel log is readable without root: `journalctl -k | grep -i sc0710`.
