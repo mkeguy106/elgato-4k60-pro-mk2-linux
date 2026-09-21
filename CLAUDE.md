@@ -26,13 +26,25 @@ Specs and plans: `docs/superpowers/`. Results so far: `docs/bring-up-log.md`.
   `Nakildias/sc0710`). Driver changes go on topic branches in the fork and are
   offered upstream; the project repo pins the tested commit. Packaging lives in
   `packaging/`, not in the fork, to keep the fork mergeable.
-- The pin is the fork branch `silence-clock-pacing` (`e0ab897`): upstream
-  `ea0a712` plus one patch that paces no-signal silence by `ktime` (the stock
-  code ran the 48 kHz stream at ~42.4 kHz without a signal). When moving the
-  pin to a newer upstream, rebase that branch unless upstream has merged it
-  (offered as Nakildias/sc0710#89; the user wants AI involvement disclosed in
-  upstream PRs, while commit messages stay free of it),
-  and check with `scripts/audio-clock-check.sh` with the source switched off.
+- The pin is the fork branch `integration` (`7ee2d48`): upstream `ea0a712`
+  plus two patches, each also on its own branch off upstream for the upstream
+  PRs: `silence-clock-pacing` (`e0ab897`, Nakildias/sc0710#89; paces no-signal
+  silence by `ktime`, the stock code ran the 48 kHz stream at ~42.4 kHz) and
+  `rate-hint-plausibility` (`deac8a3`; see the next rule). When moving the pin
+  to a newer upstream, rebuild `integration` from upstream plus whichever of
+  the two is not merged yet, then check `scripts/audio-clock-check.sh` with
+  the source off and the kernel log line at the next HDMI lock. The user
+  wants AI involvement disclosed in upstream PRs, while commit messages stay
+  free of it.
+- Frame rate label ("Problem 2"): MCU status byte 0x0c is not a usable rate
+  for the Switch on this card (52, 98 or 0 for one 1080p60 signal, latched at
+  lock, never refreshed; no other MCU register carries the rate). The patch
+  believes it only within 2 Hz of a mode with the detected totals and
+  otherwise picks the mode nearest 60 Hz, logging `FPS hint N fits no ...` or
+  `No FPS Hint -> Pick ...`. `echo 1 > /sys/module/sc0710/parameters/mcu_scan`
+  (root) dumps the MCU registers to the kernel log, read-only, no reload;
+  `sc0710_debug_mode` is runtime-writable but prints ~10 lines/s without a
+  signal and gates per-frame prints: player closed, short windows only.
 - The card must stay PipeWire's graph clock (capture nodes get
   `priority.driver` 2000, outputs ~1000). A WirePlumber rule that lowers it was
   tried on 2026-09-20 and reverted: with a signal the card delivers 1024-frame
@@ -63,9 +75,6 @@ Specs and plans: `docs/superpowers/`. Results so far: `docs/bring-up-log.md`.
   fixed by moving the `driver/` pin, never by editing `/usr/src`.
 - Installing or upgrading the package rebuilds both initramfs images (CachyOS
   limine hook). Expected; only the blacklist file ends up inside them.
-- The driver may announce 30 or 119.88 fps after a module load while delivering
-  60 (log: "Problem 2"). `verify.sh`'s `signal` check fails on such a load;
-  make the source re-lock and rerun before suspecting anything else.
 - Audio only flows while video is streaming unless the module is loaded with
   `keep_audio_alive=1`. Capture both in one process when testing audio.
 - ALSA `hw:` access is exclusive, and the PipeWire source

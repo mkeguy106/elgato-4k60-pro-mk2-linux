@@ -569,3 +569,38 @@ Root cause as far as established: the driver trusts a byte that, on this card
 with this source, is not a usable refresh rate. Not yet known: whether any
 other MCU register carries the real rate while a signal is present (needs a
 scan with the Switch on), and what the byte means on this card.
+
+### Problem 2 fixed in the driver (2026-09-21)
+
+- Scan with the Switch on (`mcu_scan`): compared with the no-signal dump only
+  height, width, byte 0c and the flags change; nothing is populated beyond
+  offset 0x16. The MCU offers no better source for the rate.
+- The labelled rate is only reported (frame intervals, `G_PARM`, DV timings,
+  procfs); nothing in the driver paces or timestamps by it.
+- Patch `deac8a3` (branch `rate-hint-plausibility`, off upstream): believe the
+  byte only when it is within 2 Hz of a mode with the detected totals;
+  otherwise, and for 0, pick the mode nearest 60 Hz instead of the first table
+  entry, and log it.
+- Checked by compiling the old and the new function against the real format
+  table in userspace: Switch bytes 0 / 52 / 98 give 1080p60 (before: p30, p60,
+  p119.88); hints 30 / 119 / 120 still give p30 / p119.88 / p120; all 52 table
+  modes resolve as before when given their own rate. The no-hint fallback of
+  the active-resolution pass used to return 1080i25 and now returns 1080p60.
+- On hardware, hand-built module with both patches (`integration`, `7ee2d48`):
+
+      18:32:04 FPS hint 98 fits no 2200x1125 mode (nearest 1920x1080p119.88) -> Pick 1920x1080p60
+      18:33:33 (same)
+
+  `v4l2-ctl --get-parm` reports 60.000 fps. (A first check right after the
+  load also showed 60 fps, but the Switch was asleep then and that was the
+  driver's no-signal default, not evidence; caught by the missing detection
+  line.)
+- Not tested on hardware: the byte-0 case after a load with the console
+  already on. It was deliberately not forced, because a reload restarts
+  PipeWire and the user had streams playing. It takes the same branch as the
+  tested case and is covered by the userspace check; the next such load should
+  log `No FPS Hint -> Pick 1920x1080p60`.
+- Installed: `sc0710-mk2-dkms 2026.09.02.1.r225.7ee2d48-1` over r224 (snapshots
+  5250/5251), DKMS `installed` for both kernels, header checksums unchanged,
+  installed module `srcversion` F05342E9F54934ECD5B5022 identical to the
+  loaded, tested build. The pin now points at `integration`.
