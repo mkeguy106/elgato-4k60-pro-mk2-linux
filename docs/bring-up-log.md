@@ -604,3 +604,5 @@ scan with the Switch on), and what the byte means on this card.
   5250/5251), DKMS `installed` for both kernels, header checksums unchanged,
   installed module `srcversion` F05342E9F54934ECD5B5022 identical to the
   loaded, tested build. The pin now points at `integration`.
+- Offered upstream: https://github.com/Nakildias/sc0710/pull/90 (with the same
+  AI disclosure as #89 and a list of what was not tested).

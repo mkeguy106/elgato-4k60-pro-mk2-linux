@@ -30,7 +30,7 @@ Specs and plans: `docs/superpowers/`. Results so far: `docs/bring-up-log.md`.
   plus two patches, each also on its own branch off upstream for the upstream
   PRs: `silence-clock-pacing` (`e0ab897`, Nakildias/sc0710#89; paces no-signal
   silence by `ktime`, the stock code ran the 48 kHz stream at ~42.4 kHz) and
-  `rate-hint-plausibility` (`deac8a3`; see the next rule). When moving the pin
+  `rate-hint-plausibility` (`deac8a3`, Nakildias/sc0710#90; see the next rule). When moving the pin
   to a newer upstream, rebuild `integration` from upstream plus whichever of
   the two is not merged yet, then check `scripts/audio-clock-check.sh` with
   the source off and the kernel log line at the next HDMI lock. The user
