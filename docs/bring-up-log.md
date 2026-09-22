@@ -606,3 +606,20 @@ scan with the Switch on), and what the byte means on this card.
   loaded, tested build. The pin now points at `integration`.
 - Offered upstream: https://github.com/Nakildias/sc0710/pull/90 (with the same
   AI disclosure as #89 and a list of what was not tested).
+- After-load case checked on hardware (2026-09-21 18:59): player closed,
+  Switch on, `scripts/unload.sh`, then `sudo modprobe sc0710` (the DKMS
+  module, `srcversion` F05342E9F54934ECD5B5022). First detection:
+
+      18:59:09 FPS hint 98 fits no 2200x1125 mode (nearest 1920x1080p119.88) -> Pick 1920x1080p60
+
+  `v4l2-ctl --get-parm` 60.000 fps; ffmpeg opens the stream as 60 fps and
+  prints no timestamp warnings. The byte was 98 again, not 0: the MCU keeps
+  its latched value across a driver reload, so the literal byte-0 branch
+  (`No FPS Hint`) has still not occurred on hardware since the patch. It was
+  seen before only after a cold start of the card (reboot, first load ever)
+  and once after a reload.
+- Cost of that test: `unload.sh` restarted PipeWire and the user's Twitch
+  stream in mpv lost its audio and did not reconnect (third such incident
+  after Jellyfin twice). With the card idle the only holder of the module is
+  WirePlumber (`/dev/snd/controlC5`); the PipeWire daemon that applications
+  are connected to holds nothing. `unload.sh` is heavier than it needs to be.
