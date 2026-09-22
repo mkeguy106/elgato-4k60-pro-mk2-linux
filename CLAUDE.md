@@ -18,7 +18,7 @@ Specs and plans: `docs/superpowers/`. Results so far: `docs/bring-up-log.md`.
     scripts/install-desktop-entry.sh     # app menu entry for play.sh (generated: holds this clone's path)
     bash tests/test-install-desktop-entry.sh
     scripts/audio-clock-check.sh [SECS]  # real rate of the card's audio stream; needs a capturing program
-    scripts/unload.sh                    # stop PipeWire, rmmod, restart PipeWire
+    scripts/unload.sh                    # stop WirePlumber, rmmod, start it again (apps stay connected)
 
 ## Rules
 
@@ -52,10 +52,15 @@ Specs and plans: `docs/superpowers/`. Results so far: `docs/bring-up-log.md`.
   constantly. `priority.driver` cannot be changed at runtime with `pw-cli`.
   Evidence for audio clock trouble: `journalctl --user -u pipewire | grep
   spa.alsa` ("follower ... resync") and `pw-top -b -n 2`.
-- `scripts/unload.sh` restarts PipeWire, which cuts every program's sound; some
-  (Jellyfin desktop) do not reconnect. Warn the user before running it. An
-  upgraded package does not need an unload: the running module keeps working
-  and the new file is used from the next load.
+- `scripts/unload.sh` stops only WirePlumber (the sole holder of an idle card:
+  `/dev/snd/controlC<N>`); the PipeWire daemon keeps running, so applications
+  stay connected and are re-linked within ~2 s. `--restart-pipewire` is the
+  old full restart: it disconnects every program's audio and mpv / Jellyfin
+  desktop do not reconnect (happened three times on 2026-09-20/21). Do not
+  use it without telling the user first. An upgraded package does not need an
+  unload: the running module keeps working and the new file is used from the
+  next load. To test whether streams survive something, run a silent canary:
+  `pw-cat -p --raw --volume 0 -P '{ node.name = "canary" }' /dev/zero`.
 - Never run the fork's `scripts/install-sc0710.sh` or `scripts/sc0710-cli.sh`.
 - Never `rmmod -f`. Use `scripts/unload.sh`, after closing the player and any
   capture program.

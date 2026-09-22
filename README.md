@@ -134,13 +134,17 @@ notifications. Only one instance runs at a time.
 
     scripts/unload.sh
 
-PipeWire holds the device nodes open, so a plain `rmmod` is refused. The script
-stops PipeWire, unloads, and restarts it. Close the player and any capture
-program first. Never use `rmmod -f`.
+WirePlumber keeps the card's control device open even when nothing is
+capturing, so a plain `rmmod` is refused. The script stops WirePlumber only,
+unloads, and starts it again: the PipeWire daemon keeps running, applications
+stay connected, and their sound pauses for a second or two while the streams
+are re-linked. Close the player and any capture program first. Never use
+`rmmod -f`.
 
-Restarting PipeWire cuts the sound of every running program for a moment. Most
-reconnect by themselves; some do not and need their playback or the program
-restarted (seen with the Jellyfin desktop client).
+If the unload is still refused, the script lists who holds the card. When that
+is PipeWire itself, `scripts/unload.sh --restart-pipewire` releases it, but
+that disconnects every program's audio, and some do not reconnect (seen with
+mpv and the Jellyfin desktop client).
 
 ## Known problems
 

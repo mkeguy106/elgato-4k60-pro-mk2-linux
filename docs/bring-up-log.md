@@ -623,3 +623,24 @@ scan with the Switch on), and what the byte means on this card.
   after Jellyfin twice). With the card idle the only holder of the module is
   WirePlumber (`/dev/snd/controlC5`); the PipeWire daemon that applications
   are connected to holds nothing. `unload.sh` is heavier than it needs to be.
+
+## unload.sh no longer restarts PipeWire (2026-09-21)
+
+- With the card idle the only holder of the module is WirePlumber
+  (`fuser`: `/dev/snd/controlC5 ... wireplumber`); the PipeWire daemon holds a
+  PCM only while something captures. The script used to stop the whole stack,
+  which disconnected every application (Jellyfin twice, a Twitch stream in mpv
+  once; neither reconnects by itself; in mpv pressing `#` twice re-opens the
+  audio output).
+- Now: stop `wireplumber.service`, `rmmod`, start it again. The full restart is
+  behind `--restart-pipewire`; when `rmmod` is refused the script lists the
+  holders and says so instead of escalating.
+- Test, two unload/reload cycles with the player closed: module unloaded both
+  times, the PipeWire daemon kept its pid, and a silent canary stream
+  (`pw-cat -p --raw --volume 0 ... /dev/zero`) kept the same node id, stayed
+  `running` and had both links again 2 s after the unload. After `modprobe`
+  the card's PipeWire source reappeared and the label was 1080p60. (My first
+  canary had failed to start, without `--raw`, so the first cycle proved only
+  the unload, not stream survival.)
+- Not tested: the refusal path with a program capturing, and
+  `--restart-pipewire` itself (unchanged code from the old script).
