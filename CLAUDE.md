@@ -26,16 +26,16 @@ Specs and plans: `docs/superpowers/`. Results so far: `docs/bring-up-log.md`.
   `Nakildias/sc0710`). Driver changes go on topic branches in the fork and are
   offered upstream; the project repo pins the tested commit. Packaging lives in
   `packaging/`, not in the fork, to keep the fork mergeable.
-- The pin is the fork branch `integration` (`7ee2d48`): upstream `ea0a712`
-  plus two patches, each also on its own branch off upstream for the upstream
-  PRs: `silence-clock-pacing` (`e0ab897`, Nakildias/sc0710#89; paces no-signal
-  silence by `ktime`, the stock code ran the 48 kHz stream at ~42.4 kHz) and
-  `rate-hint-plausibility` (`deac8a3`, Nakildias/sc0710#90; see the next rule). When moving the pin
-  to a newer upstream, rebuild `integration` from upstream plus whichever of
-  the two is not merged yet, then check `scripts/audio-clock-check.sh` with
-  the source off and the kernel log line at the next HDMI lock. The user
-  wants AI involvement disclosed in upstream PRs, while commit messages stay
-  free of it.
+- The pin is plain upstream again: `86edea0` on `main` (fork `main` is
+  fast-forwarded to it). Both patches from this project were merged upstream
+  on 2026-09-22: Nakildias/sc0710#89 (no-signal silence paced by `ktime`; the
+  stock code ran the 48 kHz stream at ~42.4 kHz) and #90 (rate byte
+  plausibility, next rule). The fork branch `integration` (`7ee2d48`, same
+  tree as `86edea0`) must stay: older commits of this repo pin it. After
+  moving the pin, check `scripts/audio-clock-check.sh` with the source off
+  and the kernel log line at the next HDMI lock. The user wants AI
+  involvement disclosed in upstream PRs, while commit messages stay free of
+  it.
 - Frame rate label ("Problem 2"): MCU status byte 0x0c is not a usable rate
   for the Switch on this card (52, 98 or 0 for one 1080p60 signal, latched at
   lock, never refreshed; no other MCU register carries the rate). The patch

@@ -148,25 +148,24 @@ mpv and the Jellyfin desktop client).
 
 ## Known problems
 
-- Fixed in the pinned driver commit, still present upstream: the driver
-  announced 30 or 119.88 fps for a 60 Hz console (OBS and ffmpeg showed the
-  wrong rate; delivery was always 60). It takes the rate from a status byte of
-  the card's controller, which for a first-generation Switch is not a rate at
-  all: the same 1080p60 signal gave 52, 98 or 0. The patch only believes the
-  byte when it fits a mode with the detected totals and otherwise assumes
-  60 Hz. A genuine 1080p30 source that also reports a nonsense byte would be
-  labelled 60.
-- Fixed in the pinned driver commit, still present upstream: with no HDMI signal
-  the driver's 48 kHz audio stream advanced at about 42.4 kHz. PipeWire makes a
-  capture device the clock of any graph it is linked into, so with the player
-  (or an OBS monitor mix) open and the console off, all other sound on the same
-  output stuttered. Do not work
-  around it by lowering the card's `priority.driver` in WirePlumber: the card
-  delivers audio in 1024-frame bursts on the video interrupt, and as a clock
-  follower its own audio gets resynchronised constantly.
-- `driver/` points at the fork's `integration` branch: upstream plus these two
-  patches (`silence-clock-pacing`, `rate-hint-plausibility`), both offered
-  upstream.
+- Fixed upstream since `86edea0` (2026-09-22), by patches from this project:
+  - The driver announced 30 or 119.88 fps for a 60 Hz console (OBS and ffmpeg
+    showed the wrong rate; delivery was always 60). It takes the rate from a
+    status byte of the card's controller, which for a first-generation Switch
+    is not a rate at all: the same 1080p60 signal gave 52, 98 or 0. The driver
+    now only believes the byte when it fits a mode with the detected totals
+    and otherwise assumes 60 Hz. A genuine 1080p30 source that also reports a
+    nonsense byte would be labelled 60.
+    ([Nakildias/sc0710#90](https://github.com/Nakildias/sc0710/pull/90))
+  - With no HDMI signal the driver's 48 kHz audio stream advanced at about
+    42.4 kHz. PipeWire makes a capture device the clock of any graph it is
+    linked into, so with the player (or an OBS monitor mix) open and the
+    console off, all other sound on the same output stuttered.
+    ([Nakildias/sc0710#89](https://github.com/Nakildias/sc0710/pull/89))
+    With an older driver, do not work around it by lowering the card's
+    `priority.driver` in WirePlumber: the card delivers audio in 1024-frame
+    bursts on the video interrupt, and as a clock follower its own audio gets
+    resynchronised constantly.
 - Details and the rest of the list: `docs/bring-up-log.md`.
 
 ## Roll back

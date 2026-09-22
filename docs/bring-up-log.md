@@ -644,3 +644,18 @@ scan with the Switch on), and what the byte means on this card.
   the unload, not stream survival.)
 - Not tested: the refusal path with a program capturing, and
   `--restart-pipewire` itself (unchanged code from the old script).
+
+## Both patches merged upstream; pin back on upstream main (2026-09-21 evening, 2026-09-22 UTC)
+
+- Nakildias/sc0710#89 (silence clock) and #90 (rate byte plausibility) were
+  merged without review comments: upstream `main` = `86edea0` = the old base
+  `ea0a712` + the two commits + two merge commits. `git diff integration
+  upstream/main` is empty, so the source is identical to the build tested here.
+- Fork `main` fast-forwarded to upstream and pushed; `driver/` now pins
+  `86edea0`. The fork branch `integration` stays, because earlier commits of
+  this repo pin `7ee2d48`.
+- Package rebuilt from the new pin and installed so that version and pin agree:
+  `sc0710-mk2-dkms 2026.09.02.1.r227.86edea0-1` (snapshots 5253/5254), DKMS
+  `installed` for both kernels, header checksums unchanged. The module on disk
+  has the same `srcversion` as the tested, loaded one
+  (F05342E9F54934ECD5B5022), so no reload was needed.
