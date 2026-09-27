@@ -751,3 +751,9 @@ worth changing upstream.
   right arguments and exits 0.
 - `scripts/frame-seam.py` is the measuring tool from the sleep/wake test,
   kept so a recurrence can be checked with one command.
+- Live test by the user (12:09-12:11): player restarted from the app menu
+  (running the new `play.sh`), `r` pressed five times: each press is a
+  `sc0710_dma_channels_stop()` followed by `sc0710_dma_channels_resize()`
+  within a second (12:10:05, :21, :25, :30, :33), so the capture really
+  restarts. No mpv crash. User: "seems to work". Frame afterwards correctly
+  aligned (`frame-seam.py`: strongest edge row 75, score 16, not flagged).
