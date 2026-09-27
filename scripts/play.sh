@@ -9,6 +9,8 @@
 #
 # Volume: 9/0, / and *, mouse wheel, m to mute (mpv-game-volume.lua adjusts the
 #         PipeWire stream, because the audio does not pass through mpv).
+# Re-sync: r restarts the capture if the picture comes up wrapped vertically
+#         (mpv-capture-resync.lua).
 #
 # Usage: scripts/play.sh [extra mpv options]
 #        AUDIO_LATENCY_MS=20 scripts/play.sh     (loopback latency, default 20)
@@ -104,12 +106,23 @@ else
 fi
 
 # The app id ties the window to the menu entry (icon, task manager grouping).
-mpv "av://v4l2:$node" --demuxer-lavf-o=input_format=yuyv422 \
-    --profile=low-latency --untimed --no-audio \
-    --script="$here/mpv-game-volume.lua" \
-    --title="Elgato 4K60 Pro Mk.2" \
-    --wayland-app-id=elgato-4k60-play --x11-name=elgato-4k60-play \
-    --log-file="$log" "$@"
+# mpv-capture-resync.lua quits with 42 (43 when fullscreen) to have mpv
+# started again: reopening the device inside mpv crashes it.
+fs=()
+while :; do
+    mpv "av://v4l2:$node" --demuxer-lavf-o=input_format=yuyv422 \
+        --profile=low-latency --untimed --no-audio \
+        --script="$here/mpv-game-volume.lua" \
+        --script="$here/mpv-capture-resync.lua" \
+        --title="Elgato 4K60 Pro Mk.2" \
+        --wayland-app-id=elgato-4k60-play --x11-name=elgato-4k60-play \
+        --log-file="$log" "${fs[@]}" "$@"
+    case $? in
+        42) fs=() ;;
+        43) fs=(--fs) ;;
+        *)  break ;;
+    esac
+done
 
 if grep -q 'Cannot allocate memory' "$log"; then
     notify "The driver could not get contiguous memory. Run scripts/play.sh in a terminal for what to do."

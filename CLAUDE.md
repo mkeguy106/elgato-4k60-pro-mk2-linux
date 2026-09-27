@@ -19,6 +19,7 @@ Specs and plans: `docs/superpowers/`. Results so far: `docs/bring-up-log.md`.
     bash tests/test-install-desktop-entry.sh
     scripts/audio-clock-check.sh [SECS]  # real rate of the card's audio stream; needs a capturing program
     scripts/unload.sh                    # stop WirePlumber, rmmod, start it again (apps stay connected)
+    scripts/frame-seam.py [--watch|FILE] # vertical wrap check on frames from the card (saves to out/seam/)
 
 ## Rules
 
@@ -61,6 +62,23 @@ Specs and plans: `docs/superpowers/`. Results so far: `docs/bring-up-log.md`.
   unload: the running module keeps working and the new file is used from the
   next load. To test whether streams survive something, run a silent canary:
   `pw-cat -p --raw --volume 0 -P '{ node.name = "canary" }' /dev/zero`.
+- Vertical wrap ("Problem 4", 2026-09-27): a DMA restart can come up out of
+  phase, every frame wrapped at a fixed row (822 in the one case seen), and it
+  stays until the next restart. The driver checks only the 8 frames after the
+  3 dropped ones following a restart (`dma_resync_validate_frames`), with
+  `sc0710_detect_horizontal_tear()` in `lib/sc0710-dma-channel.c`; 5 retries
+  per timing commit. Known weaknesses, both observed: false positives on real
+  full-width lines (Switch HOME menu footer at row 970: 5 needless re-resyncs
+  in one second) and likely blindness during a wake fade-in (unproven: the
+  frames of the missed case were not captured). Cause of the phase error
+  itself: unknown. Tools: `scripts/frame-seam.py` (same statistic, saves the
+  frame; always look at it). Next research step if it recurs and matters: a
+  debug build that logs the detector's score per validated frame, then
+  sleep/wake cycles with `frame-seam.py --watch` until a wrap is caught.
+- mpv cannot reopen `av://v4l2` in-process (`loadfile`): it segfaults in
+  `av_packet_unref` on a freed V4L2 buffer callback (0xd3adb3ef). The `r` key
+  (`mpv-capture-resync.lua`) therefore quits with exit code 42 (43 =
+  fullscreen) and `play.sh` starts mpv again. Keep those codes in sync.
 - Never run the fork's `scripts/install-sc0710.sh` or `scripts/sc0710-cli.sh`.
 - Never `rmmod -f`. Use `scripts/unload.sh`, after closing the player and any
   capture program.

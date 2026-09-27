@@ -122,7 +122,8 @@ the card as a clock (see "Known problems").
 Low-latency live view: mpv shows the video as frames arrive, and a PipeWire
 loopback plays the card's audio. Needs `mpv` and PipeWire (`pw-loopback`,
 `pactl`). Volume is controlled inside the mpv window with 9/0, / and *, the
-mouse wheel, and m to mute. Other programs (OBS, ffmpeg) can capture from the
+mouse wheel, and m to mute. `r` re-syncs the capture (see "Known problems":
+the window closes and reopens within a second). Other programs (OBS, ffmpeg) can capture from the
 card at the same time.
 
 If the module is not loaded, `play.sh` loads it: silently where `sudo` needs no
@@ -148,6 +149,17 @@ mpv and the Jellyfin desktop client).
 
 ## Known problems
 
+- **Picture wrapped vertically** (top of the picture shown below a seam,
+  bottom part on top), seen once in ten capture restarts on 2026-09-27. A
+  capture restart (console woken, signal back, player opened) came up out of
+  phase and stays that way. Press `r` in the player, or put the console to
+  sleep and wake it. `r` only helps when the player is the only program
+  capturing from the card. To measure one: `scripts/frame-seam.py` (one frame
+  now) or `scripts/frame-seam.py --watch` (a frame after every restart), then
+  look at the frame it saves; a desktop screenshot scores on its window edge
+  instead. The driver's own check for this misses it sometimes and fires on
+  the Switch HOME menu's footer line; details and open questions in
+  `docs/bring-up-log.md`, "Problem 4".
 - Fixed upstream since `86edea0` (2026-09-22), by patches from this project:
   - The driver announced 30 or 119.88 fps for a 60 Hz console (OBS and ffmpeg
     showed the wrong rate; delivery was always 60). It takes the rate from a

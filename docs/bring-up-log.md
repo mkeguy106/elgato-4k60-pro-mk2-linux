@@ -730,3 +730,24 @@ Also seen on 7.2.5: `workqueue: work func sc0710_audio_silence_work_fn
 enqueued on deprecated workqueue. Use system_{percpu|dfl}_wq instead.` A
 deprecation notice from the audio patch's use of `system_wq`; harmless now,
 worth changing upstream.
+
+### Problem 4: re-sync key in the player (2026-09-27)
+
+- `r` in the player restarts the capture: when the player is the only
+  streaming client, closing the device makes the driver stop the video DMA
+  (last `STREAMOFF`) and reopening starts it again (first `STREAMON`), a fresh
+  attempt at the frame phase, like a console sleep/wake.
+- First version used mpv's `loadfile` to reopen in-process. Tested with a
+  hidden second mpv driven over IPC: mpv segfaulted 13 ms after the reopen,
+  `ip 0xd3adb3ef` (freed-memory poison), stack `av_packet_unref` ->
+  `av_buffer_unref` -> freed callback, after `v4l2: Some buffers are still
+  owned by the caller on close`. Packets that reference the old V4L2 mmap
+  buffers outlive the device. An mpv/FFmpeg bug, not fixable here.
+- Now `scripts/mpv-capture-resync.lua` quits with exit code 42 (43 when
+  fullscreen) and `scripts/play.sh` starts mpv again in a loop, with `--fs`
+  after 43; the audio loopback keeps running across the restart. Tested: the
+  hidden mpv exits 42 windowed and 43 fullscreen without crashing; `play.sh`
+  with a stand-in mpv that exits 43, 42, 0 starts it three times with the
+  right arguments and exits 0.
+- `scripts/frame-seam.py` is the measuring tool from the sleep/wake test,
+  kept so a recurrence can be checked with one command.
