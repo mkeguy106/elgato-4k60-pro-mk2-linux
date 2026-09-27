@@ -27,12 +27,13 @@ Specs and plans: `docs/superpowers/`. Results so far: `docs/bring-up-log.md`.
   `Nakildias/sc0710`). Driver changes go on topic branches in the fork and are
   offered upstream; the project repo pins the tested commit. Packaging lives in
   `packaging/`, not in the fork, to keep the fork mergeable.
-- The pin is plain upstream again: `86edea0` on `main` (fork `main` is
-  fast-forwarded to it). Both patches from this project were merged upstream
-  on 2026-09-22: Nakildias/sc0710#89 (no-signal silence paced by `ktime`; the
-  stock code ran the 48 kHz stream at ~42.4 kHz) and #90 (rate byte
-  plausibility, next rule). The fork branch `integration` (`7ee2d48`, same
-  tree as `86edea0`) must stay: older commits of this repo pin it. After
+- The pin is plain upstream: `489470e` on `main` (version `2026.09.27-1`;
+  fork `main` is fast-forwarded to it). Both patches from this project were
+  merged upstream on 2026-09-22: Nakildias/sc0710#89 (no-signal silence paced
+  by `ktime`; the stock code ran the 48 kHz stream at ~42.4 kHz) and #90 (rate
+  byte plausibility, next rule). The fork branch `integration` (`7ee2d48`)
+  must stay: older commits of this repo pin it. Before moving the pin, read
+  the new upstream commits; after
   moving the pin, check `scripts/audio-clock-check.sh` with the source off
   and the kernel log line at the next HDMI lock. The user wants AI
   involvement disclosed in upstream PRs, while commit messages stay free of
@@ -122,7 +123,9 @@ Specs and plans: `docs/superpowers/`. Results so far: `docs/bring-up-log.md`.
 - An old version of this driver corrupted the kernel headers' top-level
   `Makefile`. After changing anything about how the module is built, compare
   `sha256sum /usr/lib/modules/*/build/Makefile` before and after.
-- 7.2.5-1-cachyos is compile-verified only until someone boots it and runs
-  `scripts/verify.sh`; update `docs/bring-up-log.md` when that happens.
+- Both kernels are runtime-verified: 6.18.50-3-cachyos-lts (2026-09-19/21) and
+  7.2.5-1-cachyos (2026-09-27: `verify.sh`, no-signal audio clock, play).
+  On 7.2 the audio patch's `system_wq` use prints a one-time `deprecated
+  workqueue` notice; harmless, worth an upstream change to `system_dfl_wq`.
 - `~/sc0710` is an unrelated clone of the dead original driver. Leave it alone.
 - Root commands run one per call, never chained, each described in plain words.

@@ -5,8 +5,8 @@ Getting the Elgato 4K60 Pro Mk.2 PCIe capture card (PCI `12ab:0710`, subsystem
 low-latency live view for playing a console through the card.
 
 Status: bring-up complete — 1080p60 SDR video and audio verified on CachyOS
-with kernel 6.18 LTS (30-minute soak without a lost frame, OBS and mpv on the
-card at the same time). 4K60 is a driver capability that has **not** been
+with kernels 6.18 LTS and 7.2 (30-minute soak without a lost frame, OBS and
+mpv on the card at the same time). 4K60 is a driver capability that has **not** been
 verified here: the only source available is a 1080p60 console. HDR and 10-bit
 are out of scope. Results and known problems: `docs/bring-up-log.md`.
 

@@ -757,3 +757,46 @@ worth changing upstream.
   within a second (12:10:05, :21, :25, :30, :33), so the capture really
   restarts. No mpv crash. User: "seems to work". Frame afterwards correctly
   aligned (`frame-seam.py`: strongest edge row 75, score 16, not flagged).
+
+## Pin moved to upstream 489470e; kernel 7.2.5 fully verified (2026-09-27)
+
+- Upstream `0ebdffb` (merged as `489470e`, version `2026.09.27-1`): no-signal
+  placeholder frames every three frame periods of the advertised rate (50 ms
+  at 60 fps, capped at 250 ms) instead of a fixed 250 ms, to stop OBS logging a
+  timeout per missed frame; whole-row copy of the status image when widths
+  match. Reviewed before moving the pin: source and destination of the row
+  copy are both YUYV (2 bytes per pixel), so equal widths mean equal row
+  lengths, and every source row index stays below the source height; the
+  interval math is 3 x HZ x fpsden / fpsnum. With our rate fix the advertised
+  rate is 60, so the interval is 50 ms (under the old 30 fps label it would
+  have been 100 ms, past OBS's 83 ms default).
+- Fork `main` fast-forwarded and pushed; `driver/` pins `489470e`. Package
+  `sc0710-mk2-dkms 2026.09.27.1.r229.489470e-1` installed (snapshots
+  5392/5393), DKMS `installed` for both kernels, header checksums unchanged,
+  boot guard in place.
+- Reloaded with the gentle `scripts/unload.sh` (PipeWire kept pid 1077, the
+  user's other audio kept playing) and `modprobe` on 7.2.5: `srcversion`
+  6D6B2B638DEE8E17046CF23. First lock `FPS hint 52 fits no 2200x1125 mode ...
+  -> Pick 1920x1080p60`.
+- `scripts/verify.sh` on 7.2.5, Switch on the Mario Kart post-race menu:
+
+      module         PASS  sc0710 is loaded
+      devices        PASS  pci=0000:03:00.0 video=/dev/video2 alsa=hw:5,0
+      signal         PASS  1920x1080 60.00
+      format-YUYV    PASS  1920x1080 listed
+      format-BGR3    PASS  1920x1080 listed
+      capture        PASS  1800 frames in 30s
+      kernel-log     PASS  no sc0710 errors during capture
+      audio          PASS  mean volume -39.6 dB
+      picture        LOOK  inspect out/frame-1080.png: correct image, aligned, right colours
+      audio-default  PASS  default sink and source unchanged
+
+      all automated checks passed
+
+  Frame: "Next Race" menu, sharp, aligned, right colours.
+- Switch asleep, player open: `scripts/audio-clock-check.sh` 48002 Hz and
+  48012 Hz; no speaker resync lines; placeholder frames seen by a second
+  client 192 in 10 s (about 19 per second; 4 per second before).
+- Kernel 7.2.5-1-cachyos is therefore runtime-verified, not just
+  compile-verified. The user also played on it (picture and sound fine, `r`
+  key tested).
