@@ -659,3 +659,27 @@ scan with the Switch on), and what the byte means on this card.
   `installed` for both kernels, header checksums unchanged. The module on disk
   has the same `srcversion` as the tested, loaded one
   (F05342E9F54934ECD5B5022), so no reload was needed.
+
+## First boot on kernel 7.2.5-1-cachyos (2026-09-27)
+
+- Booted 11:41:02. `cma: Reserved 256 MiB at 0x0000000044600000`, `CmaTotal:
+  262144 kB`, as on 6.18. The NVIDIA open driver is built for 7.2.5 and the
+  desktop came up.
+- Two `WARNING: ... __nv_drm_handle_flip_event ... nv_flip == NULL` call traces
+  from `nvidia_drm` at 11:41:25, more than a minute before the capture driver
+  was loaded; not related to this card.
+- The player (app menu) loaded the DKMS module
+  `/lib/modules/7.2.5-1-cachyos/updates/dkms/sc0710.ko.zst` at 11:42:39
+  (`srcversion` F05342E9F54934ECD5B5022, same source as on 6.18). Only the
+  usual taint line; no driver warnings.
+- **Cold-start rate case confirmed:** first lock after the boot, 11:42:56:
+
+      sc0710: No FPS Hint -> Pick 1920x1080p60
+
+  The byte was 0, the case that used to give 1080p30. `v4l2-ctl --get-parm`
+  60.000 fps. This was the last branch of the rate fix not yet seen on
+  hardware.
+- `scripts/audio-clock-check.sh` with the signal present and the player
+  running: 48016 Hz and 47913 Hz (10 s each). Two `front:1p: follower ...
+  resync` lines at 11:42:57 and 11:43:02, right after the signal came back:
+  the same transient as on 6.18.
