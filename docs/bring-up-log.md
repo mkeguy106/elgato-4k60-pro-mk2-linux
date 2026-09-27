@@ -683,3 +683,50 @@ scan with the Switch on), and what the byte means on this card.
   running: 48016 Hz and 47913 Hz (10 s each). Two `front:1p: follower ...
   resync` lines at 11:42:57 and 11:43:02, right after the signal came back:
   the same transient as on 6.18.
+
+## Problem 4: picture wrapped vertically after a signal restore (2026-09-27, kernel 7.2.5)
+
+Report (screenshot 11:44): the Mario Kart menu was cut off at the top and
+continued below: every frame was wrapped. The top 822 rows of the buffer held
+real lines 258-1079, the bottom rows held real lines 0-257. Four frames grabbed
+at 11:46 had the seam at exactly row 822: a fixed phase offset, not a moving
+tear. It began with the DMA restart after the Switch's signal returned at
+11:42:56 (`Signal restoration - DMA was stopped` -> `DMA restarted`), and the
+driver logged nothing about it.
+
+How the driver guards against this (`lib/sc0710-dma-channel.c`,
+`lib/sc0710-i2c.c` phase 3): after every DMA restart it drops 3 frames, then
+runs `sc0710_detect_horizontal_tear()` on the next `dma_resync_validate_frames`
+(8) frames: mean |dY| between adjacent rows, flagged if the strongest row is
+>= 42 and > 2 x average + 12. Two hits near the same line trigger a re-resync,
+at most `dma_resync_max_tear_retries` (5) per timing commit. After those 8
+frames nothing checks again.
+
+Sleep/wake test with the player open (watcher grabbed a frame 5 s after each
+`DMA restarted` and applied the same statistic; frames in `out/wake/`, not
+tracked):
+
+- The first wake fixed the picture. All restarts after it came up aligned.
+- At 11:49:50 the driver's check fired on the Switch HOME menu, whose
+  full-width footer separator sits at row 970: `Tear seam persisted near line
+  969` five times within one second, each a DMA stop/restart, until the
+  retries were used up. The picture was correct each time. The statistic
+  cannot tell a real horizontal UI line from a wrap seam (my copy scored the
+  correctly aligned HOME menu at 124).
+- Frames 5 s after a wake are still in the Switch's fade-in (HOME menu at mean
+  luma 48 of 255). The 8 validated frames come earlier, darker still, so a
+  real seam there likely leaves too little contrast to be seen. That fits the
+  11:42:56 miss, but those frames were not captured, so it is not proven.
+- Count today: 1 wrapped restart out of 10 (11:42:56 wrapped; 6 at 11:49:50
+  and 3 later aligned). Never reported on 6.18 across several restores with
+  the player open. Nothing in this path is kernel-specific.
+
+Not known: why a restart sometimes starts mid-frame (FPGA/DMA timing; the
+phase-3 comment says it can happen).
+
+Workaround: put the Switch to sleep and wake it (restarts the DMA; confirmed).
+
+Also seen on 7.2.5: `workqueue: work func sc0710_audio_silence_work_fn
+enqueued on deprecated workqueue. Use system_{percpu|dfl}_wq instead.` A
+deprecation notice from the audio patch's use of `system_wq`; harmless now,
+worth changing upstream.
